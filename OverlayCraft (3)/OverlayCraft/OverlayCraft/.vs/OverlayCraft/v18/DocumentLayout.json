@@ -1,0 +1,152 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|c:\\projetos\\gestao-ativos-codecraft\\overlaycraft (3)\\overlaycraft\\overlaycraft\\overlaycraft\\frm_overlay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_overlay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\hardwareutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\hardwareutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\frm_overlay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_overlay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\frm_license.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_license.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\frm_license.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_license.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\frm_sobre.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_sobre.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\frm_sobre.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\frm_sobre.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\overlaycraft\\funcgeral.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{996268DD-2961-4030-8420-23BBE1809EEC}|OverlayCraft\\OverlayCraft.csproj|solutionrelative:overlaycraft\\funcgeral.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "HardwareUtil.cs",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\HardwareUtil.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\HardwareUtil.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\HardwareUtil.cs",
+              "RelativeToolTip": "OverlayCraft\\HardwareUtil.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAC8AAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-11T01:11:48.786Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "frm_Overlay.cs",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Overlay.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_Overlay.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Overlay.cs",
+              "RelativeToolTip": "OverlayCraft\\frm_Overlay.cs",
+              "ViewState": "AgIAAEkAAAAAAAAAAAAIwFkAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-11T01:11:49.351Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "frm_Overlay.cs [Design]",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Overlay.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_Overlay.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Overlay.cs [Design]",
+              "RelativeToolTip": "OverlayCraft\\frm_Overlay.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003525|",
+              "WhenOpened": "2026-01-11T01:11:49.352Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "frm_License.cs [Design]",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_License.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_License.cs",
+              "ToolTip": "D:\\CODECRAFT_GEN-Z\\PROJETOS\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_License.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003525|",
+              "WhenOpened": "2026-01-11T01:11:49.354Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "FuncGeral.cs",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\FuncGeral.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\FuncGeral.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\FuncGeral.cs",
+              "RelativeToolTip": "OverlayCraft\\FuncGeral.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-11T01:11:49.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "frm_Sobre.cs",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Sobre.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_Sobre.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Sobre.cs",
+              "RelativeToolTip": "OverlayCraft\\frm_Sobre.cs",
+              "ViewState": "AQIAAAUAAAAAAAAAAAAlwBIAAABAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003525|",
+              "WhenOpened": "2026-01-11T01:11:49.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "frm_Sobre.cs [Design]",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Sobre.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_Sobre.cs",
+              "ToolTip": "D:\\CODECRAFT_GEN-Z\\PROJETOS\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_Sobre.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003525|",
+              "WhenOpened": "2026-01-11T01:11:49.359Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "frm_License.cs",
+              "DocumentMoniker": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_License.cs",
+              "RelativeDocumentMoniker": "OverlayCraft\\frm_License.cs",
+              "ToolTip": "C:\\projetos\\gestao-ativos-codecraft\\OverlayCraft (3)\\OverlayCraft\\OverlayCraft\\OverlayCraft\\frm_License.cs",
+              "RelativeToolTip": "OverlayCraft\\frm_License.cs",
+              "ViewState": "AQIAAAMAAAAAAAAAAAAAAA8AAAAcAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003525|",
+              "WhenOpened": "2026-01-11T01:11:49.36Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
