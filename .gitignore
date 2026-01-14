@@ -41,7 +41,11 @@ tmp/
 temp/
 *.tmp
 
-# C# / .NET
+# C# / .NET - Ignorar projetos completos
+OverlayCraft/
+OverlayAgent/
+
+# Arquivos C# genéricos (caso escapem)
 bin/
 obj/
 *.exe
@@ -49,8 +53,18 @@ obj/
 *.pdb
 *.user
 *.suo
+*.cache
 packages/
+*.nupkg
+
+# Visual Studio
+.vs/
+*.vsidx
+*.lock.json
 
 # Inno Setup
 Output/
-*.exe
+installer-output/
+
+# NuGet
+nuget.exe
