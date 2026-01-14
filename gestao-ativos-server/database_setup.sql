@@ -26,27 +26,6 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- TABELA: user_licenses (Licencas dos usuarios para apps)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS user_licenses (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    appId INT NOT NULL COMMENT 'ID do aplicativo (2=OverlayCraft)',
-    userId INT NULL,
-    email VARCHAR(255) NOT NULL,
-    hardwareId VARCHAR(64) NULL COMMENT 'SHA-256 do hardware ID da maquina',
-    licenseKey VARCHAR(255) NULL,
-    appName VARCHAR(100) NULL,
-    activatedAt DATETIME NULL,
-    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    INDEX idx_licenses_email (email),
-    INDEX idx_licenses_appId (appId),
-    INDEX idx_licenses_hardwareId (hardwareId),
-    UNIQUE INDEX idx_licenses_unique (appId, email, hardwareId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================================
 -- TABELA: filiais (Filiais/Unidades da empresa)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS filiais (
@@ -455,13 +434,6 @@ INSERT INTO filiais (codigo, descricao, palavras_chave) VALUES
 ('300000', 'Filial 2', 'filial2')
 ON DUPLICATE KEY UPDATE descricao = descricao;
 
--- Licenca para teste do OverlayCraft
--- Email: ricardocoradini97@gmail.com
--- HardwareId: sera preenchido na primeira ativacao
-INSERT INTO user_licenses (appId, email, appName, createdAt) VALUES
-(2, 'ricardocoradini97@gmail.com', 'OverlayCraft', NOW())
-ON DUPLICATE KEY UPDATE updatedAt = NOW();
-
 -- Registra migration como executada
 INSERT INTO _migrations (name) VALUES ('001_initial_schema.sql')
 ON DUPLICATE KEY UPDATE name = name;
@@ -470,4 +442,4 @@ ON DUPLICATE KEY UPDATE name = name;
 -- VERIFICACAO FINAL
 -- ============================================================================
 -- Execute: SHOW TABLES;
--- Esperado: 16 tabelas
+ -- Esperado: 15 tabelas

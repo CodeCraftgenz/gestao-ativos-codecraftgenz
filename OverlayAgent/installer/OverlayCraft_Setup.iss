@@ -7,11 +7,11 @@
 #define MyAppPublisher "Sua Empresa"
 #define MyAppURL "https://suaempresa.com.br"
 #define MyAppExeName "OverlayCraft.exe"
-#define MyServiceName "OverlayAgentService"
+#define MyServiceName "OverlayAgent"
 
 ; Caminhos dos arquivos fonte (caminho absoluto)
-#define OverlayCraftPath "C:\projetos\gestao-ativos-codecraft\OverlayCraft (3)\OverlayCraft\OverlayCraft\OverlayCraft\bin\Debug"
-#define AgentPath "C:\projetos\gestao-ativos-codecraft\OverlayAgent\publish"
+#define OverlayCraftPath "..\..\OverlayCraft\bin\Release"
+#define AgentPath "..\publish"
 
 [Setup]
 AppId={{B2C3D4E5-F6A7-8901-BCDE-F12345678901}
