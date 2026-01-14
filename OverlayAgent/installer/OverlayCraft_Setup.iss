@@ -83,10 +83,10 @@ Name: "{group}\OverlayCraft"; Filename: "{app}\{#MyAppExeName}"; Components: ove
 Name: "{group}\Desinstalar OverlayCraft"; Filename: "{uninstallexe}"
 
 ; Atalho na Area de Trabalho
-Name: "{autodesktop}\OverlayCraft"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Components: overlaycraft
+Name: "{commondesktop}\OverlayCraft"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Components: overlaycraft
 
 ; Iniciar com Windows
-Name: "{userstartup}\OverlayCraft"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon; Components: overlaycraft
+Name: "{commonstartup}\OverlayCraft"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon; Components: overlaycraft
 
 [Run]
 ; Instala o servico do Agent (se selecionado)
@@ -100,8 +100,8 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Executar OverlayCraft agora"; F
 
 [UninstallRun]
 ; Para e remove o servico do Agent
-Filename: "sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden waituntilterminated
-Filename: "sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden waituntilterminated
+Filename: "sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden waituntilterminated; RunOnceId: "StopAgentService"
+Filename: "sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden waituntilterminated; RunOnceId: "DeleteAgentService"
 
 [UninstallDelete]
 ; Remove dados locais do Agent
@@ -110,7 +110,6 @@ Type: filesandordirs; Name: "{localappdata}\OverlayAgent"
 [Code]
 var
   ServerURLPage: TInputQueryWizardPage;
-  AgentSelected: Boolean;
 
 procedure InitializeWizard();
 begin
@@ -131,7 +130,7 @@ begin
   // Pula a pagina de URL se o Agent nao estiver selecionado
   if PageID = ServerURLPage.ID then
   begin
-    Result := not IsComponentSelected('agent');
+    Result := not WizardIsComponentSelected('agent');
   end;
 end;
 
@@ -179,7 +178,7 @@ var
   ConfigFile: String;
   JsonContent: String;
 begin
-  if not IsComponentSelected('agent') then Exit;
+  if not WizardIsComponentSelected('agent') then Exit;
 
   ConfigFile := ExpandConstant('{app}\Agent\appsettings.json');
 
