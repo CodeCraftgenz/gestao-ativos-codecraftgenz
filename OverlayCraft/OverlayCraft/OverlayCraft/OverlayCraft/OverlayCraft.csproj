@@ -178,6 +178,8 @@
     <Compile Include="FuncGeral.cs" />
     <Compile Include="HardwareUtil.cs" />
     <Compile Include="MonitoringServer.cs" />
+    <Compile Include="OverlayApiService.cs" />
+    <Compile Include="OverlayCraftPayload.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="frm_Overlay.resx">

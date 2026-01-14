@@ -39,7 +39,14 @@
       "Bash(python -c:*)",
       "Bash(ls:*)",
       "Bash(timeout:*)",
-      "Read(//tmp/claude/c--projetos-gestao-ativos-codecraft/tasks/**)"
+      "Read(//tmp/claude/c--projetos-gestao-ativos-codecraft/tasks/**)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: IT Asset Management System\n\n- Backend API \\(Node.js/Express/TypeScript\\) with MySQL database\n- Frontend Admin Panel \\(React + Vite + TypeScript\\)\n- OverlayCraft monitoring app \\(C# .NET Windows Forms\\)\n- OverlayAgent Windows Service \\(C# .NET\\)\n- Real-time monitoring with POST snapshots\n- Render deployment configuration\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft SQL Server Management Studio 22\\\\Release\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" \"c:\\\\projetos\\\\gestao-ativos-codecraft\\\\OverlayCraft \\(3\\)\\\\OverlayCraft\\\\OverlayCraft\\\\OverlayCraft.sln\" /p:Configuration=Debug /t:Rebuild)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft SQL Server Management Studio 22\\\\Release\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" OverlayCraft.sln /p:Configuration=Debug /t:Rebuild)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Inno Setup 6\\\\ISCC.exe\" \"c:\\\\projetos\\\\gestao-ativos-codecraft\\\\OverlayAgent\\\\installer\\\\OverlayCraft_Setup.iss\")"
     ]
   }
 }

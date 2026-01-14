@@ -21,7 +21,7 @@ namespace OverlayCraft
         private readonly string _baseUrl;
         private bool _disposed = false;
 
-        public OverlayApiService(string baseUrl = "https://codecraftgenz.com.br")
+        public OverlayApiService(string baseUrl = "https://codecraftgenz-monorepo.onrender.com")
         {
             _baseUrl = baseUrl;
             _httpClient = new HttpClient();

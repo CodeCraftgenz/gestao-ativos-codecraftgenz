@@ -23,8 +23,9 @@ namespace OverlayCraft
     public partial class frm_Overlay : Form
     {
         private readonly HttpClient _httpClient = new HttpClient();
-        public const int AppId = 101;
-        private const string BaseUrl = "https://codecraftgenz.com.br";
+        public const int AppId = 2;
+        private const string LicenseUrl = "https://codecraftgenz.com.br";  // Validação de licença (seu site)
+        private const string MonitoringUrl = "https://codecraftgenz-monorepo.onrender.com";  // Snapshots/Monitoramento (Render)
         public bool b_Valida = false;
 
         FuncGeral obj_FuncGeral = new FuncGeral();
@@ -151,7 +152,7 @@ namespace OverlayCraft
             try
             {
                 // Fazer a requisição
-                var response = await _httpClient.GetAsync($"https://codecraftgenz.com.br/api/compat/license-check?" + "email=" + Uri.EscapeDataString(email) + "&id_pc=" + Uri.EscapeDataString(HardwareId) + "&app_id=" + Uri.EscapeDataString(AppId.ToString()));
+                var response = await _httpClient.GetAsync($"{LicenseUrl}/api/compat/license-check?email=" + Uri.EscapeDataString(email) + "&id_pc=" + Uri.EscapeDataString(HardwareId) + "&app_id=" + Uri.EscapeDataString(AppId.ToString()));
 
 
 
@@ -586,7 +587,7 @@ namespace OverlayCraft
         {
             try
             {
-                _overlayApiService = new OverlayApiService();
+                _overlayApiService = new OverlayApiService(MonitoringUrl);
 
                 _snapshotTimer = new Timer { Interval = SNAPSHOT_INTERVAL_MS };
                 _snapshotTimer.Tick += async (s, e) => await EnviarSnapshotAsync();
