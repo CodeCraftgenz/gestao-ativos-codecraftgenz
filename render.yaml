@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: gestao-ativos-server
+    env: node
+    rootDirectory: gestao-ativos-server
+    region: virginia
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+      - key: AGENT_MIN_VERSION
+        value: "1.0.0"
+      - key: AUTO_APPROVE_DEVICES
+        value: "false"
+      - key: HEARTBEAT_INTERVAL
+        value: "60"
+      - key: HEARTBEAT_TIMEOUT
+        value: "180"
+      - key: INVENTORY_INTERVAL
+        value: "24"
