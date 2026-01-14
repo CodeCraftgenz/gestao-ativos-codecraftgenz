@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <configSections>
+        <sectionGroup name="userSettings" type="System.Configuration.UserSettingsGroup, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" >
+            <section name="OverlayCraft.Properties.Settings" type="System.Configuration.ClientSettingsSection, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" allowExeDefinition="MachineToLocalUser" requirePermission="false" />
+        </sectionGroup>
+    </configSections>
+    <startup> 
+        <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.7.2" />
+    </startup>
+    <userSettings>
+        <OverlayCraft.Properties.Settings>
+            <setting name="ShowServiceTag" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowSO" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowCPU" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowCPUPerCore" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowGPU" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowRAM" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowDisks" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowNetwork" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="ShowUser" serializeAs="String">
+                <value>True</value>
+            </setting>
+            <setting name="FontColor" serializeAs="String">
+                <value>LimeGreen</value>
+            </setting>
+            <setting name="EnableFade" serializeAs="String">
+                <value>True</value>
+            </setting>
+        </OverlayCraft.Properties.Settings>
+    </userSettings>
+</configuration>
