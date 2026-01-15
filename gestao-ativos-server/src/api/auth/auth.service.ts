@@ -16,7 +16,7 @@ interface UserRow {
   password_hash: string;
   name: string;
   role: UserRole;
-  active: boolean;
+  is_active: boolean;
 }
 
 // =============================================================================
@@ -25,7 +25,7 @@ interface UserRow {
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const user = await queryOne<UserRow>(
-    `SELECT id, email, password_hash, name, role, active FROM users WHERE email = ?`,
+    `SELECT id, email, password_hash, name, role, is_active FROM users WHERE email = ?`,
     [data.email]
   );
 
@@ -34,7 +34,7 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     throw new UnauthorizedError('Email ou senha invalidos');
   }
 
-  if (!user.active) {
+  if (!user.is_active) {
     logger.warn('Tentativa de login com usuario inativo', { email: data.email, userId: user.id });
     throw new UnauthorizedError('Usuario desativado. Entre em contato com o administrador.');
   }
@@ -77,11 +77,11 @@ export async function refreshToken(token: string): Promise<RefreshTokenResponse>
 
     // Verifica se o usuario ainda existe e esta ativo
     const user = await queryOne<UserRow>(
-      `SELECT id, email, name, role, active FROM users WHERE id = ?`,
+      `SELECT id, email, name, role, is_active FROM users WHERE id = ?`,
       [payload.sub]
     );
 
-    if (!user || !user.active) {
+    if (!user || !user.is_active) {
       throw new UnauthorizedError('Usuario nao encontrado ou desativado');
     }
 
@@ -143,9 +143,9 @@ export async function changePassword(userId: number, data: ChangePasswordRequest
 // GET CURRENT USER
 // =============================================================================
 
-export async function getCurrentUser(userId: number): Promise<Omit<UserRow, 'password_hash' | 'active'> | null> {
+export async function getCurrentUser(userId: number): Promise<Omit<UserRow, 'password_hash' | 'is_active'> | null> {
   const user = await queryOne<UserRow>(
-    `SELECT id, email, name, role FROM users WHERE id = ? AND active = true`,
+    `SELECT id, email, name, role FROM users WHERE id = ? AND is_active = true`,
     [userId]
   );
 
