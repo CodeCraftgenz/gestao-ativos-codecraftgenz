@@ -401,14 +401,14 @@ async function getRecentActivity(): Promise<RecentActivity[]> {
     SELECT
       d.id as device_id,
       d.hostname,
-      d.assigned_user,
+      h.logged_user as assigned_user,
       h.ip_address,
       d.last_seen_at,
       d.status,
       'heartbeat' as event_type
     FROM devices d
     INNER JOIN (
-      SELECT device_id, ip_address, MAX(received_at) as max_time
+      SELECT device_id, MAX(received_at) as max_time
       FROM device_heartbeats
       GROUP BY device_id
     ) latest ON d.id = latest.device_id
