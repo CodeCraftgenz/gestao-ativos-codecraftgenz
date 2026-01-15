@@ -858,6 +858,12 @@ async function populateOverlayCraftCache(deviceInternalId: number, data: Snapsho
 
     logger.debug(`[Agent] Snapshot do device ${device.serial_bios} populado no cache`);
   } catch (error) {
-    logger.error('Erro ao popular cache do OverlayCraft', { error, deviceInternalId });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('Erro ao popular cache do OverlayCraft', {
+      errorMsg,
+      errorStack,
+      deviceInternalId
+    });
   }
 }
