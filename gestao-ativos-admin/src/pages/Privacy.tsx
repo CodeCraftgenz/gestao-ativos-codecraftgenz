@@ -8,6 +8,9 @@ import {
   Info,
   Save,
   RefreshCw,
+  Database,
+  Activity,
+  CheckCircle,
 } from 'lucide-react';
 
 interface LgpdSettings {
@@ -102,11 +105,6 @@ export function Privacy() {
   async function exportData() {
     try {
       // const response = await api.get('/admin/lgpd/export', { responseType: 'blob' });
-      // const url = window.URL.createObjectURL(response.data);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = `dados-lgpd-${new Date().toISOString().split('T')[0]}.json`;
-      // a.click();
       alert('Exportacao de dados iniciada. O arquivo sera baixado em breve.');
     } catch (error) {
       console.error('Erro ao exportar:', error);
@@ -116,142 +114,161 @@ export function Privacy() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="loading-container">
+        <div className="spinner"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Shield className="w-8 h-8 text-blue-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Central de Privacidade - LGPD</h1>
-          <p className="text-gray-600">Gerencie a retencao e protecao de dados pessoais</p>
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="page-header-row">
+          <div>
+            <h1 className="page-title">Central de Privacidade - LGPD</h1>
+            <p className="page-description">Gerencie a retencao e protecao de dados pessoais</p>
+          </div>
         </div>
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-        <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+      <div className="alert alert-info mb-6">
+        <Info className="alert-icon" />
         <div>
-          <h3 className="font-medium text-blue-900">Sobre a coleta de dados</h3>
-          <p className="text-sm text-blue-800 mt-1">
-            Este sistema coleta dados de <strong>endereco IP</strong> e <strong>usuario logado</strong> para
-            fins de <strong>seguranca patrimonial</strong> e <strong>auditoria de acesso</strong>.
-            Os dados sao utilizados exclusivamente para identificar acessos nao autorizados e
-            rastrear dispositivos em caso de furto ou uso indevido.
-          </p>
+          <strong>Sobre a coleta de dados:</strong> Este sistema coleta dados de endereco IP e usuario logado para
+          fins de seguranca patrimonial e auditoria de acesso. Os dados sao utilizados exclusivamente para
+          identificar acessos nao autorizados e rastrear dispositivos em caso de furto ou uso indevido.
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Total de Heartbeats</div>
-          <div className="text-2xl font-bold text-gray-900">{stats.total_heartbeats.toLocaleString()}</div>
-          {stats.oldest_heartbeat && (
-            <div className="text-xs text-gray-400 mt-1">
-              Desde {new Date(stats.oldest_heartbeat).toLocaleDateString('pt-BR')}
+      <div className="stats-grid mb-6">
+        <div className="stat-card blue">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <Activity />
             </div>
-          )}
+          </div>
+          <div className="stat-card-value">{stats.total_heartbeats.toLocaleString()}</div>
+          <div className="stat-card-label">
+            Total de Heartbeats
+            {stats.oldest_heartbeat && (
+              <span className="block text-xs mt-1">
+                Desde {new Date(stats.oldest_heartbeat).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Eventos de Atividade</div>
-          <div className="text-2xl font-bold text-gray-900">{stats.total_activity_events.toLocaleString()}</div>
-          {stats.oldest_activity && (
-            <div className="text-xs text-gray-400 mt-1">
-              Desde {new Date(stats.oldest_activity).toLocaleDateString('pt-BR')}
+
+        <div className="stat-card green">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <Clock />
             </div>
-          )}
+          </div>
+          <div className="stat-card-value">{stats.total_activity_events.toLocaleString()}</div>
+          <div className="stat-card-label">
+            Eventos de Atividade
+            {stats.oldest_activity && (
+              <span className="block text-xs mt-1">
+                Desde {new Date(stats.oldest_activity).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Registros de IP</div>
-          <div className="text-2xl font-bold text-gray-900">{stats.total_ip_records.toLocaleString()}</div>
+
+        <div className="stat-card yellow">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <Database />
+            </div>
+          </div>
+          <div className="stat-card-value">{stats.total_ip_records.toLocaleString()}</div>
+          <div className="stat-card-label">Registros de IP</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Status LGPD</div>
-          <div className="text-lg font-bold text-green-600">Conformidade OK</div>
+
+        <div className="stat-card gray">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <CheckCircle />
+            </div>
+          </div>
+          <div className="stat-card-value" style={{ fontSize: '1.25rem', color: 'var(--success-600)' }}>
+            Conformidade OK
+          </div>
+          <div className="stat-card-label">Status LGPD</div>
         </div>
       </div>
 
       {/* Retention Settings */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Politica de Retencao de Dados</h2>
-          </div>
-          <p className="text-sm text-gray-500 mt-1">
+      <div className="card mb-6">
+        <div className="card-header">
+          <h2 className="card-title">
+            <Clock size={20} />
+            Politica de Retencao de Dados
+          </h2>
+        </div>
+        <div className="card-body">
+          <p className="text-sm text-gray-500 mb-6">
             Configure por quanto tempo os dados serao mantidos antes de serem anonimizados ou excluidos.
           </p>
-        </div>
-        <div className="p-6 space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Retencao de Heartbeats (dias)
-              </label>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="form-group">
+              <label className="form-label">Retencao de Heartbeats (dias)</label>
               <input
                 type="number"
                 min="7"
                 max="365"
                 value={settings.heartbeat_retention_days}
                 onChange={(e) => setSettings({ ...settings, heartbeat_retention_days: parseInt(e.target.value) || 90 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="input"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Heartbeats mais antigos serao excluidos automaticamente.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Retencao de Eventos de Atividade (dias)
-              </label>
+            <div className="form-group">
+              <label className="form-label">Retencao de Eventos de Atividade (dias)</label>
               <input
                 type="number"
                 min="30"
                 max="730"
                 value={settings.activity_retention_days}
                 onChange={(e) => setSettings({ ...settings, activity_retention_days: parseInt(e.target.value) || 365 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="input"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Eventos de boot, shutdown, login e logout.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Anonimizar IPs apos (dias)
-              </label>
+            <div className="form-group">
+              <label className="form-label">Anonimizar IPs apos (dias)</label>
               <input
                 type="number"
                 min="30"
                 max="365"
                 value={settings.ip_anonymize_after_days}
                 onChange={(e) => setSettings({ ...settings, ip_anonymize_after_days: parseInt(e.target.value) || 180 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="input"
               />
               <p className="text-xs text-gray-500 mt-1">
                 IPs serao mascarados (ex: 192.168.*.*) apos este periodo.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Anonimizar usuarios apos (dias)
-              </label>
+            <div className="form-group">
+              <label className="form-label">Anonimizar usuarios apos (dias)</label>
               <input
                 type="number"
                 min="90"
                 max="1095"
                 value={settings.user_anonymize_after_days}
                 onChange={(e) => setSettings({ ...settings, user_anonymize_after_days: parseInt(e.target.value) || 730 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="input"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Nomes de usuarios serao substituidos por identificadores anonimos.
@@ -259,13 +276,14 @@ export function Privacy() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-6">
             <button
+              type="button"
               onClick={saveSettings}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="btn btn-primary"
             >
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
               {saving ? 'Salvando...' : 'Salvar Configuracoes'}
             </button>
           </div>
@@ -273,18 +291,24 @@ export function Privacy() {
       </div>
 
       {/* Data Actions */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Acoes de Dados</h2>
-          <p className="text-sm text-gray-500 mt-1">
+      <div className="card mb-6">
+        <div className="card-header">
+          <h2 className="card-title">
+            <Shield size={20} />
+            Acoes de Dados
+          </h2>
+        </div>
+        <div className="card-body space-y-4">
+          <p className="text-sm text-gray-500 mb-4">
             Exporte ou exclua dados conforme exigido pela LGPD.
           </p>
-        </div>
-        <div className="p-6 space-y-4">
+
           {/* Export */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Download className="w-5 h-5 text-blue-600" />
+          <div className="quick-action">
+            <div className="quick-action-content">
+              <div className="quick-action-icon blue">
+                <Download size={20} />
+              </div>
               <div>
                 <div className="font-medium text-gray-900">Exportar Dados</div>
                 <div className="text-sm text-gray-500">
@@ -292,18 +316,17 @@ export function Privacy() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={exportData}
-              className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50"
-            >
+            <button type="button" onClick={exportData} className="btn btn-secondary">
               Exportar
             </button>
           </div>
 
           {/* Delete Old */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-yellow-600" />
+          <div className="quick-action">
+            <div className="quick-action-content">
+              <div className="quick-action-icon yellow">
+                <Clock size={20} />
+              </div>
               <div>
                 <div className="font-medium text-gray-900">Limpar Dados Antigos</div>
                 <div className="text-sm text-gray-500">
@@ -312,20 +335,23 @@ export function Privacy() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setDeleteType('old');
                 setShowDeleteModal(true);
               }}
-              className="px-4 py-2 text-yellow-600 border border-yellow-600 rounded-lg hover:bg-yellow-50"
+              className="btn btn-secondary"
             >
               Limpar
             </button>
           </div>
 
           {/* Delete All */}
-          <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Trash2 className="w-5 h-5 text-red-600" />
+          <div className="quick-action" style={{ background: 'var(--danger-50)' }}>
+            <div className="quick-action-content">
+              <div className="quick-action-icon" style={{ background: 'var(--danger-100)', color: 'var(--danger-600)' }}>
+                <Trash2 size={20} />
+              </div>
               <div>
                 <div className="font-medium text-gray-900">Excluir Todos os Dados</div>
                 <div className="text-sm text-gray-500">
@@ -334,11 +360,12 @@ export function Privacy() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setDeleteType('all');
                 setShowDeleteModal(true);
               }}
-              className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-100"
+              className="btn btn-danger"
             >
               Excluir Tudo
             </button>
@@ -346,29 +373,46 @@ export function Privacy() {
         </div>
       </div>
 
+      {/* Legal Notice */}
+      <div className="card">
+        <div className="card-body">
+          <p className="text-sm text-gray-600">
+            <strong>Aviso Legal:</strong> Em conformidade com a Lei Geral de Protecao de Dados (LGPD - Lei 13.709/2018),
+            os dados pessoais coletados sao utilizados exclusivamente para as finalidades descritas acima.
+            O titular dos dados tem direito a solicitar acesso, correcao ou exclusao de seus dados a qualquer momento.
+          </p>
+        </div>
+      </div>
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-              <h3 className="text-lg font-bold text-gray-900">Confirmar Exclusao</h3>
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <div className="flex items-center gap-3">
+                <AlertTriangle size={24} style={{ color: 'var(--danger-500)' }} />
+                <h3 className="modal-title">Confirmar Exclusao</h3>
+              </div>
             </div>
-            <p className="text-gray-600 mb-6">
-              {deleteType === 'all'
-                ? 'Tem certeza que deseja excluir TODOS os dados de telemetria? Esta acao e irreversivel.'
-                : 'Tem certeza que deseja excluir os dados antigos? Esta acao e irreversivel.'}
-            </p>
-            <div className="flex justify-end gap-3">
+            <div className="modal-body">
+              <p className="text-gray-600">
+                {deleteType === 'all'
+                  ? 'Tem certeza que deseja excluir TODOS os dados de telemetria? Esta acao e irreversivel.'
+                  : 'Tem certeza que deseja excluir os dados antigos? Esta acao e irreversivel.'}
+              </p>
+            </div>
+            <div className="modal-footer">
               <button
+                type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn btn-secondary"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="btn btn-danger"
               >
                 Confirmar Exclusao
               </button>
@@ -376,13 +420,6 @@ export function Privacy() {
           </div>
         </div>
       )}
-
-      {/* Legal Notice */}
-      <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-        <strong>Aviso Legal:</strong> Em conformidade com a Lei Geral de Protecao de Dados (LGPD - Lei 13.709/2018),
-        os dados pessoais coletados sao utilizados exclusivamente para as finalidades descritas acima.
-        O titular dos dados tem direito a solicitar acesso, correcao ou exclusao de seus dados a qualquer momento.
-      </div>
     </div>
   );
 }
