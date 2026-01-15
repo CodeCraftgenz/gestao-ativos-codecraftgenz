@@ -91,7 +91,7 @@ public class LocalStorage
 
 public class AgentConfig
 {
-    public string ServerUrl { get; set; } = "https://gestao-ativos-server.onrender.com";
+    public string ServerUrl { get; set; } = "https://gestao-ativos-codecraftgenz.onrender.com";
     public string? DeviceId { get; set; }
     public string? AgentToken { get; set; }
     public string? RefreshToken { get; set; }

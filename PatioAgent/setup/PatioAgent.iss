@@ -2,7 +2,7 @@
 ; Patio de Controle - Agente Windows
 
 #define MyAppName "PatioAgent"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "CodeCraft"
 #define MyAppExeName "PatioAgent.exe"
 #define MyAppDescription "Agente de monitoramento para controle de maquinas"
@@ -58,14 +58,22 @@ Filename: "sc.exe"; Parameters: "delete PatioAgent"; Flags: runhidden waituntilt
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
+  LocalAppData: String;
 begin
   Result := '';
-  // Para o servico se existir
+
+  // Para e remove servicos antigos
   Exec('sc.exe', 'stop PatioAgent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('sc.exe', 'stop OverlayAgent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(2000);
-  // Remove o servico se existir
   Exec('sc.exe', 'delete PatioAgent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('sc.exe', 'delete OverlayAgent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(1000);
+
+  // Remove dados antigos
+  LocalAppData := ExpandConstant('{localappdata}');
+  DelTree(LocalAppData + '\PatioAgent', True, True, True);
+  DelTree(LocalAppData + '\OverlayAgent', True, True, True);
 end;
 
 // Mensagem de conclusao
