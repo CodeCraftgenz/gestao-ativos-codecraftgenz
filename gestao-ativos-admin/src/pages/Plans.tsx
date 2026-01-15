@@ -153,14 +153,15 @@ export function Plans() {
         },
       ]);
 
+      // Admin tem plano Empresarial com todos os recursos
       setSubscription({
         id: 1,
-        plan_id: 1,
-        plan_name: 'Gratuito',
-        status: 'trial',
+        plan_id: 4,
+        plan_name: 'Empresarial',
+        status: 'active',
         started_at: new Date().toISOString(),
         expires_at: null,
-        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        trial_ends_at: null,
       });
 
       setUsage({
@@ -382,6 +383,8 @@ export function Plans() {
               style={{
                 ...(plan.highlight ? { boxShadow: '0 4px 20px rgba(59, 130, 246, 0.15)' } : {}),
                 position: 'relative',
+                overflow: 'visible',
+                marginTop: plan.highlight ? '0.75rem' : '0',
               }}
             >
               {/* Highlight Badge */}
