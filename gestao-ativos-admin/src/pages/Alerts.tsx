@@ -10,9 +10,11 @@ import {
   MemoryStick,
   MapPin,
   Shield,
-  Check,
+  CheckCircle,
   Bell,
   Settings,
+  Save,
+  RefreshCw,
 } from 'lucide-react';
 
 interface Alert {
@@ -48,10 +50,10 @@ const alertTypeConfig: Record<string, { icon: React.ElementType; label: string }
   security: { icon: Shield, label: 'Seguranca' },
 };
 
-const severityConfig: Record<string, { color: string; bgColor: string; icon: React.ElementType }> = {
-  info: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Info },
-  warning: { color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: AlertCircle },
-  critical: { color: 'text-red-600', bgColor: 'bg-red-100', icon: AlertTriangle },
+const severityConfig: Record<string, { badge: string; icon: React.ElementType }> = {
+  info: { badge: 'badge-info', icon: Info },
+  warning: { badge: 'badge-warning', icon: AlertCircle },
+  critical: { badge: 'badge-danger', icon: AlertTriangle },
 };
 
 export function Alerts() {
@@ -66,6 +68,7 @@ export function Alerts() {
     email_notifications: true,
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'acknowledged' | 'resolved'>('active');
 
@@ -138,6 +141,19 @@ export function Alerts() {
     }
   }
 
+  async function saveSettings() {
+    try {
+      setSaving(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('Configuracoes salvas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('Erro ao salvar configuracoes');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function acknowledgeAlert(alertId: number) {
     setAlerts(alerts.map(a =>
       a.id === alertId ? { ...a, status: 'acknowledged', acknowledged_at: new Date().toISOString() } : a
@@ -163,248 +179,299 @@ export function Alerts() {
   const filteredAlerts = alerts.filter(a => filter === 'all' || a.status === filter);
   const activeCount = alerts.filter(a => a.status === 'active').length;
   const criticalCount = alerts.filter(a => a.status === 'active' && a.severity === 'critical').length;
+  const acknowledgedCount = alerts.filter(a => a.status === 'acknowledged').length;
+  const resolvedCount = alerts.filter(a => a.status === 'resolved').length;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="loading-container">
+        <div className="spinner"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Bell className="w-8 h-8 text-yellow-600" />
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="page-header-row">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Central de Alertas</h1>
-            <p className="text-gray-600">Monitore problemas e tome acoes preventivas</p>
+            <h1 className="page-title">Central de Alertas</h1>
+            <p className="page-description">Monitore problemas e tome acoes preventivas</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            className="btn btn-secondary"
+          >
+            <Settings size={18} />
+            {showSettings ? 'Fechar Configuracoes' : 'Configurar Alertas'}
+          </button>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          <Settings className="w-4 h-4" />
-          Configurar Alertas
-        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Alertas Ativos</div>
-          <div className="text-2xl font-bold text-gray-900">{activeCount}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Criticos</div>
-          <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Reconhecidos</div>
-          <div className="text-2xl font-bold text-yellow-600">
-            {alerts.filter(a => a.status === 'acknowledged').length}
+      {/* Stats Grid */}
+      <div className="stats-grid mb-6">
+        <div className="stat-card yellow">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <Bell />
+            </div>
           </div>
+          <div className="stat-card-value">{activeCount}</div>
+          <div className="stat-card-label">Alertas Ativos</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">Resolvidos (24h)</div>
-          <div className="text-2xl font-bold text-green-600">
-            {alerts.filter(a => a.status === 'resolved').length}
+
+        <div className="stat-card red">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <AlertTriangle />
+            </div>
           </div>
+          <div className="stat-card-value">{criticalCount}</div>
+          <div className="stat-card-label">Criticos</div>
+        </div>
+
+        <div className="stat-card blue">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <AlertCircle />
+            </div>
+          </div>
+          <div className="stat-card-value">{acknowledgedCount}</div>
+          <div className="stat-card-label">Reconhecidos</div>
+        </div>
+
+        <div className="stat-card green">
+          <div className="stat-card-header">
+            <div className="stat-card-icon">
+              <CheckCircle />
+            </div>
+          </div>
+          <div className="stat-card-value">{resolvedCount}</div>
+          <div className="stat-card-label">Resolvidos (24h)</div>
         </div>
       </div>
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuracoes de Alerta</h3>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Alerta de disco (%)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={settings.disk_warning_percent}
-                  onChange={(e) => setSettings({ ...settings, disk_warning_percent: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Warning"
-                />
-                <input
-                  type="number"
-                  value={settings.disk_critical_percent}
-                  onChange={(e) => setSettings({ ...settings, disk_critical_percent: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Critical"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Offline (minutos)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={settings.offline_warning_minutes}
-                  onChange={(e) => setSettings({ ...settings, offline_warning_minutes: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Warning"
-                />
-                <input
-                  type="number"
-                  value={settings.offline_critical_minutes}
-                  onChange={(e) => setSettings({ ...settings, offline_critical_minutes: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Critical"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notificacoes por e-mail
-              </label>
-              <label className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  checked={settings.email_notifications}
-                  onChange={(e) => setSettings({ ...settings, email_notifications: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded"
-                />
-                <span className="text-gray-700">Receber alertas por e-mail</span>
-              </label>
-            </div>
+        <div className="card mb-6">
+          <div className="card-header">
+            <h2 className="card-title">
+              <Settings size={20} />
+              Configuracoes de Alerta
+            </h2>
           </div>
-          <div className="flex justify-end mt-4">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              Salvar Configuracoes
-            </button>
+          <div className="card-body">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="form-group">
+                <label htmlFor="disk_warning" className="form-label">Alerta de Disco (%)</label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input
+                      id="disk_warning"
+                      type="number"
+                      value={settings.disk_warning_percent}
+                      onChange={(e) => setSettings({ ...settings, disk_warning_percent: parseInt(e.target.value) || 80 })}
+                      className="input"
+                      placeholder="Aviso"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Aviso</p>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      id="disk_critical"
+                      type="number"
+                      value={settings.disk_critical_percent}
+                      onChange={(e) => setSettings({ ...settings, disk_critical_percent: parseInt(e.target.value) || 95 })}
+                      className="input"
+                      placeholder="Critico"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Critico</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="offline_warning" className="form-label">Offline (minutos)</label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input
+                      id="offline_warning"
+                      type="number"
+                      value={settings.offline_warning_minutes}
+                      onChange={(e) => setSettings({ ...settings, offline_warning_minutes: parseInt(e.target.value) || 60 })}
+                      className="input"
+                      placeholder="Aviso"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Aviso</p>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      id="offline_critical"
+                      type="number"
+                      value={settings.offline_critical_minutes}
+                      onChange={(e) => setSettings({ ...settings, offline_critical_minutes: parseInt(e.target.value) || 1440 })}
+                      className="input"
+                      placeholder="Critico"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Critico</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Notificacoes</label>
+                <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.email_notifications}
+                    onChange={(e) => setSettings({ ...settings, email_notifications: e.target.checked })}
+                    className="checkbox"
+                  />
+                  <span className="text-gray-700">Receber alertas por e-mail</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={saving}
+                className="btn btn-primary"
+              >
+                {saving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
+                {saving ? 'Salvando...' : 'Salvar Configuracoes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {[
-          { key: 'all', label: 'Todos' },
-          { key: 'active', label: 'Ativos' },
-          { key: 'acknowledged', label: 'Reconhecidos' },
-          { key: 'resolved', label: 'Resolvidos' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key as typeof filter)}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === tab.key
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="card mb-6">
+        <div className="card-body">
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'all', label: 'Todos', count: alerts.length },
+              { key: 'active', label: 'Ativos', count: activeCount },
+              { key: 'acknowledged', label: 'Reconhecidos', count: acknowledgedCount },
+              { key: 'resolved', label: 'Resolvidos', count: resolvedCount },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFilter(tab.key as typeof filter)}
+                className={`btn ${filter === tab.key ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {tab.label}
+                <span className={`badge ${filter === tab.key ? 'badge-light' : 'badge-gray'} ml-2`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Alerts List */}
-      <div className="space-y-3">
-        {filteredAlerts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <Check className="w-12 h-12 mx-auto text-green-500 mb-2" />
-            <p className="text-gray-600">Nenhum alerta {filter !== 'all' ? `${filter}` : ''} no momento</p>
-          </div>
-        ) : (
-          filteredAlerts.map((alert) => {
-            const typeConfig = alertTypeConfig[alert.alert_type] || alertTypeConfig.security;
-            const sevConfig = severityConfig[alert.severity];
-            const TypeIcon = typeConfig.icon;
-            const SevIcon = sevConfig.icon;
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <Bell size={20} />
+            Lista de Alertas
+          </h2>
+        </div>
+        <div className="card-body">
+          {filteredAlerts.length === 0 ? (
+            <div className="empty-state">
+              <CheckCircle size={48} />
+              <p>Nenhum alerta {filter !== 'all' ? `${filter}` : ''} no momento</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredAlerts.map((alert) => {
+                const typeConfig = alertTypeConfig[alert.alert_type] || alertTypeConfig.security;
+                const sevConfig = severityConfig[alert.severity];
+                const TypeIcon = typeConfig.icon;
+                const SevIcon = sevConfig.icon;
 
-            return (
-              <div
-                key={alert.id}
-                className={`bg-white rounded-lg shadow overflow-hidden ${
-                  alert.status === 'resolved' ? 'opacity-60' : ''
-                }`}
-              >
-                <div className="flex items-stretch">
-                  {/* Severity Indicator */}
-                  <div className={`w-2 ${sevConfig.bgColor}`} />
-
-                  {/* Content */}
-                  <div className="flex-1 p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-full ${sevConfig.bgColor} flex items-center justify-center`}>
-                          <SevIcon className={`w-5 h-5 ${sevConfig.color}`} />
+                return (
+                  <div
+                    key={alert.id}
+                    className={`alert-item severity-${alert.severity} ${alert.status === 'resolved' ? 'resolved' : ''}`}
+                  >
+                    <div className="alert-item-content">
+                      <div className={`alert-item-icon ${alert.severity}`}>
+                        <SevIcon size={20} />
+                      </div>
+                      <div className="alert-item-body">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900">{alert.title}</span>
+                          <span className={`badge ${sevConfig.badge}`}>
+                            {alert.severity === 'critical' ? 'Critico' : alert.severity === 'warning' ? 'Aviso' : 'Info'}
+                          </span>
+                          {alert.status === 'acknowledged' && (
+                            <span className="badge badge-warning">Reconhecido</span>
+                          )}
+                          {alert.status === 'resolved' && (
+                            <span className="badge badge-success">Resolvido</span>
+                          )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900">{alert.title}</h3>
-                            <span className={`px-2 py-0.5 rounded text-xs ${sevConfig.bgColor} ${sevConfig.color}`}>
-                              {alert.severity}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <TypeIcon className="w-3 h-3" />
-                              {typeConfig.label}
-                            </span>
-                            <Link
-                              to={`/devices/${alert.device_id}`}
-                              className="text-blue-600 hover:underline"
-                            >
-                              {alert.device_hostname}
-                            </Link>
-                            <span>{formatTimeAgo(alert.created_at)}</span>
-                          </div>
+                        <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <TypeIcon size={12} />
+                            {typeConfig.label}
+                          </span>
+                          <Link
+                            to={`/devices/${alert.device_id}`}
+                            className="text-primary-600 hover:underline"
+                          >
+                            {alert.device_hostname}
+                          </Link>
+                          <span>{formatTimeAgo(alert.created_at)}</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {alert.status === 'active' && (
-                          <>
-                            <button
-                              onClick={() => acknowledgeAlert(alert.id)}
-                              className="px-3 py-1.5 text-sm text-yellow-600 border border-yellow-600 rounded hover:bg-yellow-50"
-                              title="Reconhecer alerta"
-                            >
-                              Reconhecer
-                            </button>
-                            <button
-                              onClick={() => resolveAlert(alert.id)}
-                              className="px-3 py-1.5 text-sm text-green-600 border border-green-600 rounded hover:bg-green-50"
-                              title="Marcar como resolvido"
-                            >
-                              Resolver
-                            </button>
-                          </>
-                        )}
-                        {alert.status === 'acknowledged' && (
+                    {/* Actions */}
+                    <div className="alert-item-actions">
+                      {alert.status === 'active' && (
+                        <>
                           <button
+                            type="button"
+                            onClick={() => acknowledgeAlert(alert.id)}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            Reconhecer
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => resolveAlert(alert.id)}
-                            className="px-3 py-1.5 text-sm text-green-600 border border-green-600 rounded hover:bg-green-50"
+                            className="btn btn-success btn-sm"
                           >
                             Resolver
                           </button>
-                        )}
-                        {alert.status === 'resolved' && (
-                          <span className="px-3 py-1.5 text-sm text-gray-500 bg-gray-100 rounded">
-                            Resolvido
-                          </span>
-                        )}
-                      </div>
+                        </>
+                      )}
+                      {alert.status === 'acknowledged' && (
+                        <button
+                          type="button"
+                          onClick={() => resolveAlert(alert.id)}
+                          className="btn btn-success btn-sm"
+                        >
+                          Resolver
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

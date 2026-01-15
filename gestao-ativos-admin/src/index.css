@@ -1657,6 +1657,92 @@ tbody tr:last-child td {
 }
 
 /* ============================================================================
+   Alert Item
+   ============================================================================ */
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  transition: all var(--transition);
+}
+
+.alert-item:hover {
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-item.severity-critical {
+  border-left: 4px solid var(--danger-500);
+}
+
+.alert-item.severity-warning {
+  border-left: 4px solid var(--warning-500);
+}
+
+.alert-item.severity-info {
+  border-left: 4px solid var(--info-500);
+}
+
+.alert-item.resolved {
+  opacity: 0.6;
+}
+
+.alert-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.alert-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.alert-item-icon.critical {
+  background: var(--danger-100);
+  color: var(--danger-600);
+}
+
+.alert-item-icon.warning {
+  background: var(--warning-100);
+  color: var(--warning-600);
+}
+
+.alert-item-icon.info {
+  background: var(--info-100);
+  color: var(--info-600);
+}
+
+.alert-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Badge Light (for filter buttons) */
+.badge-light {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* ============================================================================
    Extra Utils
    ============================================================================ */
 .font-mono { font-family: ui-monospace, monospace; }
@@ -1665,3 +1751,6 @@ tbody tr:last-child td {
 .text-red-500 { color: var(--danger-500); }
 .space-y-4 > * + * { margin-top: 1rem; }
 .lg\:col-span-2 { grid-column: span 2; }
+.lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.opacity-60 { opacity: 0.6; }
