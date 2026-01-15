@@ -1,0 +1,29 @@
+LICENÇA DE USO - PatioAgent
+============================
+
+Copyright (c) 2024-2026 CodeCraft
+
+Este software é propriedade da CodeCraft e está licenciado para uso
+conforme os termos acordados no contrato de serviço.
+
+TERMOS DE USO:
+
+1. Este software é fornecido "como está", sem garantias de qualquer tipo.
+
+2. O software coleta dados de telemetria do dispositivo para fins de
+   monitoramento corporativo, incluindo:
+   - Informações de hardware e software
+   - Eventos de boot, shutdown, login e logout
+   - Métricas de uso de CPU, memória e disco
+
+3. Os dados coletados são transmitidos para servidores da organização
+   contratante e estão sujeitos à política de privacidade vigente.
+
+4. A desinstalação do software pode ser feita a qualquer momento através
+   do Painel de Controle do Windows.
+
+5. Em conformidade com a LGPD (Lei Geral de Proteção de Dados), os dados
+   pessoais serão tratados conforme a política de privacidade disponível
+   em: https://patio.codecraft.com.br/privacidade
+
+Ao instalar este software, você concorda com estes termos.
