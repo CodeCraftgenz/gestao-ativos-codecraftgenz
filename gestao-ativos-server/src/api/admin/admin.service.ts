@@ -467,9 +467,15 @@ export async function getRealTimeDataFromCache(deviceId: number): Promise<Overla
     [deviceId]
   );
 
+  console.log(`[getRealTimeDataFromCache] deviceId=${deviceId}, serial_bios=${device?.serial_bios || 'null'}, cacheSize=${snapshotCache.size}`);
+
   if (!device || !device.serial_bios) {
+    console.log(`[getRealTimeDataFromCache] Device not found or no serial_bios`);
     return null;
   }
 
-  return getSnapshotByServiceTag(device.serial_bios);
+  const snapshot = await getSnapshotByServiceTag(device.serial_bios);
+  console.log(`[getRealTimeDataFromCache] Snapshot found: ${snapshot ? 'yes' : 'no'}`);
+
+  return snapshot;
 }
