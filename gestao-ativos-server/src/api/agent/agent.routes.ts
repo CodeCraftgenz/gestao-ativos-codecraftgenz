@@ -9,6 +9,7 @@ import {
   getCommands,
   postCommandResult,
   postEvents,
+  snapshot,
 } from './agent.controller.js';
 
 const router = Router();
@@ -41,5 +42,8 @@ router.post('/commands/:commandId/result', agentRateLimiter, agentAuthMiddleware
 
 // POST /api/agent/events - Envia eventos/logs
 router.post('/events', agentRateLimiter, agentAuthMiddleware, postEvents);
+
+// POST /api/agent/snapshot - Envia snapshot em tempo real
+router.post('/snapshot', agentRateLimiter, agentAuthMiddleware, snapshot);
 
 export default router;

@@ -6,6 +6,7 @@ import {
   inventoryRequestSchema,
   commandResultRequestSchema,
   eventsRequestSchema,
+  snapshotRequestSchema,
 } from './agent.dto.js';
 import {
   enrollDevice,
@@ -15,6 +16,7 @@ import {
   getPendingCommands,
   saveCommandResult,
   saveEvents,
+  processSnapshot,
 } from './agent.service.js';
 import { ValidationError } from '../../middleware/error.middleware.js';
 
@@ -250,6 +252,42 @@ export async function postEvents(
     res.json({
       success: true,
       data: { received },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =============================================================================
+// SNAPSHOT (Tempo Real)
+// =============================================================================
+
+/**
+ * POST /api/agent/snapshot
+ * Recebe snapshot em tempo real do dispositivo
+ */
+export async function snapshot(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.device) {
+      throw new ValidationError('Dispositivo nao autenticado');
+    }
+
+    const parseResult = snapshotRequestSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw new ValidationError('Dados de snapshot invalidos', errors);
+    }
+
+    const result = await processSnapshot(req.device.id, parseResult.data);
+
+    res.json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     next(error);

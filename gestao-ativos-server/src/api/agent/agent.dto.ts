@@ -26,7 +26,7 @@ export const enrollRequestSchema = z.object({
 export type EnrollRequest = z.infer<typeof enrollRequestSchema>;
 
 export interface EnrollResponse {
-  status: 'pending' | 'approved' | 'blocked';
+  status: 'pending' | 'approved' | 'blocked' | 'standby' | 'active';
   message: string;
   device_internal_id?: number;
   agent_token?: string;
@@ -36,8 +36,10 @@ export interface EnrollResponse {
 
 export interface AgentConfig {
   heartbeat_interval_seconds: number;
-  inventory_interval_hours: number;
+  inventory_interval_minutes: number; // Alterado de hours para minutes
   command_poll_interval_seconds: number;
+  realtime_snapshot_interval_seconds: number;
+  is_activated: boolean;
 }
 
 // =============================================================================
@@ -203,4 +205,50 @@ export type EventsRequest = z.infer<typeof eventsRequestSchema>;
 
 export interface EventsResponse {
   received: number;
+}
+
+// =============================================================================
+// SNAPSHOT (Tempo Real)
+// =============================================================================
+
+export const snapshotRequestSchema = z.object({
+  device_id: z.string().uuid('device_id deve ser um UUID valido'),
+  timestamp: z.string().datetime(),
+  cpu_usage_percent: z.number().min(0).max(100).nullable().optional(),
+  cpu_core_usages: z.array(z.number().min(0).max(100)).nullable().optional(),
+  cpu_temperature: z.number().nullable().optional(),
+  ram_usage_percent: z.number().min(0).max(100).nullable().optional(),
+  ram_used_gb: z.number().nonnegative().nullable().optional(),
+  ram_available_gb: z.number().nonnegative().nullable().optional(),
+  gpu_usage_percent: z.number().min(0).max(100).nullable().optional(),
+  gpu_memory_usage_percent: z.number().min(0).max(100).nullable().optional(),
+  gpu_temperature: z.number().nullable().optional(),
+  disks: z
+    .array(
+      z.object({
+        drive_letter: z.string(),
+        total_gb: z.number().nonnegative(),
+        free_gb: z.number().nonnegative(),
+        used_percent: z.number().min(0).max(100),
+      })
+    )
+    .nullable()
+    .optional(),
+  network: z
+    .object({
+      bytes_sent: z.number().int().nonnegative(),
+      bytes_received: z.number().int().nonnegative(),
+      send_speed_mbps: z.number().nonnegative(),
+      receive_speed_mbps: z.number().nonnegative(),
+    })
+    .nullable()
+    .optional(),
+  current_user: z.string().max(255).nullable().optional(),
+  uptime_seconds: z.number().int().nonnegative().optional(),
+});
+
+export type SnapshotRequest = z.infer<typeof snapshotRequestSchema>;
+
+export interface SnapshotResponse {
+  received: boolean;
 }

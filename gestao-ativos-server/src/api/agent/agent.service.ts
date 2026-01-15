@@ -16,6 +16,8 @@ import {
   CommandResponse,
   CommandResultRequest,
   EventsRequest,
+  SnapshotRequest,
+  SnapshotResponse,
 } from './agent.dto.js';
 import type { PoolConnection } from 'mysql2/promise';
 
@@ -35,11 +37,13 @@ interface DeviceRow {
 // HELPER FUNCTIONS
 // =============================================================================
 
-function getAgentConfig(): AgentConfig {
+function getAgentConfig(isActivated: boolean = true): AgentConfig {
   return {
     heartbeat_interval_seconds: config.agent.heartbeatInterval,
-    inventory_interval_hours: config.agent.inventoryInterval,
+    inventory_interval_minutes: 30, // 30 minutos
     command_poll_interval_seconds: 30,
+    realtime_snapshot_interval_seconds: 10,
+    is_activated: isActivated,
   };
 }
 
@@ -677,4 +681,60 @@ export async function saveEvents(
   }
 
   return savedCount;
+}
+
+// =============================================================================
+// SNAPSHOT SERVICE (Tempo Real)
+// =============================================================================
+
+export async function processSnapshot(
+  deviceInternalId: number,
+  data: SnapshotRequest
+): Promise<SnapshotResponse> {
+  // Insere snapshot no historico
+  await insert(
+    `INSERT INTO device_snapshots
+      (device_id, cpu_usage_percent, cpu_temperature, ram_usage_percent,
+       ram_used_gb, ram_available_gb, gpu_usage_percent, gpu_temperature,
+       network_bytes_sent, network_bytes_received, network_send_speed_mbps,
+       network_receive_speed_mbps, uptime_seconds, \`current_user\`, collected_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      deviceInternalId,
+      data.cpu_usage_percent ?? null,
+      data.cpu_temperature ?? null,
+      data.ram_usage_percent ?? null,
+      data.ram_used_gb ?? null,
+      data.ram_available_gb ?? null,
+      data.gpu_usage_percent ?? null,
+      data.gpu_temperature ?? null,
+      data.network?.bytes_sent ?? null,
+      data.network?.bytes_received ?? null,
+      data.network?.send_speed_mbps ?? null,
+      data.network?.receive_speed_mbps ?? null,
+      data.uptime_seconds ?? null,
+      data.current_user ?? null,
+    ]
+  );
+
+  // Atualiza metricas no device principal
+  await execute(
+    `UPDATE devices SET
+      last_snapshot_at = NOW(),
+      last_cpu_percent = ?,
+      last_ram_percent = ?,
+      uptime_seconds = ?,
+      assigned_user = COALESCE(?, assigned_user),
+      updated_at = NOW()
+     WHERE id = ?`,
+    [
+      data.cpu_usage_percent ?? null,
+      data.ram_usage_percent ?? null,
+      data.uptime_seconds ?? null,
+      data.current_user ?? null,
+      deviceInternalId,
+    ]
+  );
+
+  return { received: true };
 }
