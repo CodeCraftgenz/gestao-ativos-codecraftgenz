@@ -373,13 +373,13 @@ async function getUsageMetrics(): Promise<DeviceUsageMetric[]> {
     SELECT
       d.id as device_id,
       d.hostname,
-      COALESCE(AVG(h.cpu_usage_percent), 0) as avg_cpu_percent,
-      COALESCE(AVG(h.ram_usage_percent), 0) as avg_ram_percent,
+      COALESCE(AVG(h.cpu_percent), 0) as avg_cpu_percent,
+      COALESCE(AVG(h.ram_percent), 0) as avg_ram_percent,
       COALESCE(MAX(h.uptime_seconds) / 3600, 0) as uptime_hours,
       CASE
-        WHEN AVG(h.cpu_usage_percent) < 10 AND AVG(h.ram_usage_percent) < 30 THEN 90
-        WHEN AVG(h.cpu_usage_percent) < 20 AND AVG(h.ram_usage_percent) < 50 THEN 70
-        WHEN AVG(h.cpu_usage_percent) < 40 THEN 40
+        WHEN AVG(h.cpu_percent) < 10 AND AVG(h.ram_percent) < 30 THEN 90
+        WHEN AVG(h.cpu_percent) < 20 AND AVG(h.ram_percent) < 50 THEN 70
+        WHEN AVG(h.cpu_percent) < 40 THEN 40
         ELSE 10
       END as idle_score
     FROM devices d

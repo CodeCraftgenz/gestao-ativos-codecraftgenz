@@ -147,8 +147,11 @@ CREATE TABLE IF NOT EXISTS device_disks (
   drive_letter VARCHAR(10) NULL,
   volume_label VARCHAR(100) NULL,
   filesystem VARCHAR(50) NULL,
-  total_size_mb BIGINT NULL,
-  free_space_mb BIGINT NULL,
+  total_gb DECIMAL(10,2) NULL,
+  free_gb DECIMAL(10,2) NULL,
+  used_percent DECIMAL(5,2) NULL,
+  serial_number VARCHAR(100) NULL,
+  model VARCHAR(255) NULL,
 
   -- Tipo de disco
   disk_type ENUM('HDD', 'SSD', 'NVMe', 'Unknown') DEFAULT 'Unknown',
