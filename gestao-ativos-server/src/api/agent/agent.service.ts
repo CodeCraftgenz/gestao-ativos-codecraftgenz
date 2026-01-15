@@ -738,7 +738,12 @@ export async function processSnapshot(
   );
 
   // Popula o cache do OverlayCraft para o frontend de monitoramento em tempo real
-  await populateOverlayCraftCache(deviceInternalId, data);
+  // TODO: Descomentar após verificar se o erro 500 é daqui
+  try {
+    await populateOverlayCraftCache(deviceInternalId, data);
+  } catch (err) {
+    logger.error('Erro ao popular cache do OverlayCraft (nao critico)', { error: err });
+  }
 
   return { received: true };
 }
