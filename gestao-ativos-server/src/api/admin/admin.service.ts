@@ -249,11 +249,11 @@ export async function registerByServiceTag(
     throw new AppError(400, 'Esta Service Tag ja esta pre-registrada');
   }
 
-  // Cria o pre-registro
+  // Cria o pre-registro (garantir que undefined vire null)
   const id = await insert(
     `INSERT INTO pre_registered_devices (service_tag, description, filial_id, registered_by)
      VALUES (?, ?, ?, ?)`,
-    [serviceTag, description, filialId, userId]
+    [serviceTag, description ?? null, filialId ?? null, userId]
   );
 
   return { id, isNew: true };
