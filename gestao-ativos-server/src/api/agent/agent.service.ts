@@ -810,19 +810,33 @@ async function populateOverlayCraftCache(deviceInternalId: number, data: Snapsho
       .map(d => `Disco: ${d.drive_letter} ${d.free_gb?.toFixed(1) ?? '0'} GB / ${d.total_gb?.toFixed(1) ?? '0'} GB livres | Fila: 0,00`)
       .join('\n');
 
+    // Helper para formatar numero com seguranca
+    const formatPercent = (val: number | null | undefined): string => {
+      if (val == null || isNaN(val)) return '0%';
+      return `${Number(val).toFixed(1).replace('.', ',')}%`;
+    };
+    const formatTemp = (val: number | null | undefined): string => {
+      if (val == null || isNaN(val)) return '';
+      return `${Number(val).toFixed(1).replace('.', ',')} °C`;
+    };
+    const formatGb = (val: number | null | undefined): string => {
+      if (val == null || isNaN(val)) return '0 GB';
+      return `${Number(val).toFixed(1).replace('.', ',')} GB`;
+    };
+
     // Monta o snapshot no formato OverlayCraft
     const overlayCraftSnapshot: OverlayCraftSnapshot = {
       serviceTag: device.serial_bios,
       usuario: data.current_user ?? device.assigned_user ?? '',
       so: `${device.os_name ?? ''} ${device.os_version ?? ''}`.trim(),
       cpu: hardware?.cpu_model ?? '',
-      cpu_Uso: data.cpu_usage_percent != null ? `${data.cpu_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
-      cpu_Temp: data.cpu_temperature != null ? `${data.cpu_temperature.toFixed(1).replace('.', ',')} °C` : '',
+      cpu_Uso: formatPercent(data.cpu_usage_percent),
+      cpu_Temp: formatTemp(data.cpu_temperature),
       gpu: hardware?.gpu_model ?? '',
-      gpu_Uso: data.gpu_usage_percent != null ? `${data.gpu_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
-      gpu_Temp: data.gpu_temperature != null ? `${data.gpu_temperature.toFixed(1).replace('.', ',')} °C` : '',
-      ram_Total: hardware?.ram_total_gb != null ? `${hardware.ram_total_gb.toFixed(1).replace('.', ',')} GB` : '0 GB',
-      ram_Uso: data.ram_usage_percent != null ? `${data.ram_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
+      gpu_Uso: formatPercent(data.gpu_usage_percent),
+      gpu_Temp: formatTemp(data.gpu_temperature),
+      ram_Total: formatGb(hardware?.ram_total_gb),
+      ram_Uso: formatPercent(data.ram_usage_percent),
       ram_PageWritesSec: '',
       ram_ModifiedPages: '',
       discos: discosFormatted || '',
