@@ -208,7 +208,7 @@ export interface EventsResponse {
 }
 
 // =============================================================================
-// SNAPSHOT (Tempo Real)
+// SNAPSHOT (Tempo Real) - MANTIDO PARA COMPATIBILIDADE, MAS SIMPLIFICADO
 // =============================================================================
 
 export const snapshotRequestSchema = z.object({
@@ -251,4 +251,28 @@ export type SnapshotRequest = z.infer<typeof snapshotRequestSchema>;
 
 export interface SnapshotResponse {
   received: boolean;
+}
+
+// =============================================================================
+// ACTIVITY EVENTS (BOOT/SHUTDOWN/LOGIN/LOGOUT) - NOVO ENDPOINT PRINCIPAL
+// =============================================================================
+
+export const activityEventSchema = z.object({
+  event_type: z.enum(['boot', 'shutdown', 'login', 'logout']),
+  occurred_at: z.string().datetime(),
+  logged_user: z.string().max(255).nullable().optional(),
+  duration_seconds: z.number().int().nonnegative().nullable().optional(),
+});
+
+export type ActivityEventDto = z.infer<typeof activityEventSchema>;
+
+export const activityEventsRequestSchema = z.object({
+  device_id: z.string().uuid('device_id deve ser um UUID valido'),
+  events: z.array(activityEventSchema).min(1).max(50),
+});
+
+export type ActivityEventsRequest = z.infer<typeof activityEventsRequestSchema>;
+
+export interface ActivityEventsResponse {
+  received: number;
 }

@@ -10,15 +10,24 @@ import {
   Cpu,
   ChevronRight,
   PlusCircle,
+  Bell,
+  CreditCard,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navigation = [
   { name: 'Painel', href: '/', icon: LayoutDashboard },
   { name: 'Dispositivos', href: '/devices', icon: Monitor },
-  { name: 'Secretario', href: '/register', icon: PlusCircle },
+  { name: 'Registrar', href: '/register', icon: PlusCircle },
   { name: 'Pendentes', href: '/pending', icon: Clock },
-  { name: 'configuracoes', href: '/settings', icon: Settings },
+  { name: 'Alertas', href: '/alerts', icon: Bell },
+];
+
+const settingsNav = [
+  { name: 'Planos', href: '/plans', icon: CreditCard },
+  { name: 'Privacidade', href: '/privacy', icon: Shield },
+  { name: 'Configuracoes', href: '/settings', icon: Settings },
 ];
 
 const pageNames: Record<string, string> = {
@@ -26,7 +35,10 @@ const pageNames: Record<string, string> = {
   '/devices': 'Dispositivos',
   '/register': 'Registrar Dispositivo',
   '/pending': 'Pendentes',
-  '/settings': 'Configurações',
+  '/alerts': 'Alertas',
+  '/plans': 'Planos',
+  '/privacy': 'Privacidade LGPD',
+  '/settings': 'Configuracoes',
 };
 
 export function Layout() {
@@ -62,8 +74,8 @@ export function Layout() {
               <Cpu />
             </div>
             <div>
-              <div className="sidebar-logo-text">Gestão de Ativos</div>
-              <div className="sidebar-logo-subtitle">Sistema de Monitoramento</div>
+              <div className="sidebar-logo-text">Patio de Controle</div>
+              <div className="sidebar-logo-subtitle">Gestao de Maquinas</div>
             </div>
           </div>
         </div>
@@ -85,6 +97,25 @@ export function Layout() {
                 {item.name === 'Pendentes' && (
                   <span className="sidebar-badge">0</span>
                 )}
+                {item.name === 'Alertas' && (
+                  <span className="sidebar-badge bg-red-500">!</span>
+                )}
+              </Link>
+            );
+          })}
+
+          <div className="sidebar-section-title mt-6">Configuracoes</div>
+          {settingsNav.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`sidebar-link ${isActive ? 'active' : ''}`}
+              >
+                <item.icon />
+                <span>{item.name}</span>
               </Link>
             );
           })}

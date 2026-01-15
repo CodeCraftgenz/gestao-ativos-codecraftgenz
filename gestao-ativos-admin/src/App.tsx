@@ -9,7 +9,9 @@ import { Pending } from './pages/Pending';
 import { Settings } from './pages/Settings';
 import { DeviceDetail } from './pages/DeviceDetail';
 import { RegisterDevice } from './pages/RegisterDevice';
-import { RealTimeMonitor } from './pages/RealTimeMonitor';
+import { Plans } from './pages/Plans';
+import { Privacy } from './pages/Privacy';
+import { Alerts } from './pages/Alerts';
 
 function App() {
   return (
@@ -28,9 +30,11 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="devices" element={<Devices />} />
             <Route path="devices/:id" element={<DeviceDetail />} />
-            <Route path="devices/:id/realtime" element={<RealTimeMonitor />} />
             <Route path="register" element={<RegisterDevice />} />
             <Route path="pending" element={<Pending />} />
+            <Route path="alerts" element={<Alerts />} />
+            <Route path="plans" element={<Plans />} />
+            <Route path="privacy" element={<Privacy />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

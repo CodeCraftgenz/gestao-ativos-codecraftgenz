@@ -10,6 +10,7 @@ import {
   postCommandResult,
   postEvents,
   snapshot,
+  activityEvents,
 } from './agent.controller.js';
 
 const router = Router();
@@ -45,5 +46,9 @@ router.post('/events', agentRateLimiter, agentAuthMiddleware, postEvents);
 
 // POST /api/agent/snapshot - Envia snapshot em tempo real
 router.post('/snapshot', agentRateLimiter, agentAuthMiddleware, snapshot);
+
+// POST /api/agent/activity - Envia eventos de atividade (boot/shutdown/login/logout)
+// ENDPOINT PRINCIPAL para o Patio de Controle
+router.post('/activity', agentRateLimiter, agentAuthMiddleware, activityEvents);
 
 export default router;

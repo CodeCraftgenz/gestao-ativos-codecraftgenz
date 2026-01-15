@@ -18,9 +18,10 @@ import {
   EventsRequest,
   SnapshotRequest,
   SnapshotResponse,
+  ActivityEventsRequest,
+  ActivityEventsResponse,
 } from './agent.dto.js';
 import type { PoolConnection } from 'mysql2/promise';
-import { snapshotCache, type OverlayCraftSnapshot } from '../admin/admin.service.js';
 
 // =============================================================================
 // TIPOS INTERNOS
@@ -737,133 +738,63 @@ export async function processSnapshot(
     ]
   );
 
-  // Popula o cache do OverlayCraft para o frontend de monitoramento em tempo real
-  // TODO: Descomentar após verificar se o erro 500 é daqui
-  try {
-    await populateOverlayCraftCache(deviceInternalId, data);
-  } catch (err) {
-    logger.error('Erro ao popular cache do OverlayCraft (nao critico)', { error: err });
-  }
-
   return { received: true };
 }
 
-/**
- * Popula o cache do OverlayCraft com dados do snapshot do Agent
- * Isso permite que o frontend de monitoramento em tempo real funcione com dados do Agent
- */
-async function populateOverlayCraftCache(deviceInternalId: number, data: SnapshotRequest): Promise<void> {
-  try {
-    // Busca dados do device para montar o snapshot no formato OverlayCraft
-    const device = await queryOne<{
-      serial_bios: string;
-      hostname: string;
-      os_name: string;
-      os_version: string;
-      assigned_user: string;
-      primary_mac_address: string;
-    }>(
-      `SELECT serial_bios, hostname, os_name, os_version, assigned_user, primary_mac_address
-       FROM devices WHERE id = ?`,
-      [deviceInternalId]
-    );
+// =============================================================================
+// ACTIVITY EVENTS SERVICE (BOOT/SHUTDOWN/LOGIN/LOGOUT)
+// =============================================================================
 
-    if (!device?.serial_bios) {
-      return; // Não tem service tag, não pode popular o cache
+export async function processActivityEvents(
+  deviceInternalId: number,
+  data: ActivityEventsRequest,
+  ipAddress?: string
+): Promise<ActivityEventsResponse> {
+  let savedCount = 0;
+
+  for (const event of data.events) {
+    try {
+      await insert(
+        `INSERT INTO device_activity_events
+          (device_id, event_type, occurred_at, logged_user, ip_address, duration_seconds)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          deviceInternalId,
+          event.event_type,
+          event.occurred_at,
+          event.logged_user ?? null,
+          ipAddress ?? null,
+          event.duration_seconds ?? null,
+        ]
+      );
+      savedCount++;
+
+      // Atualiza campos do device baseado no tipo de evento
+      if (event.event_type === 'boot') {
+        await execute(
+          `UPDATE devices SET last_boot_at = ?, last_seen_at = NOW(), updated_at = NOW() WHERE id = ?`,
+          [event.occurred_at, deviceInternalId]
+        );
+      } else if (event.event_type === 'shutdown') {
+        await execute(
+          `UPDATE devices SET last_shutdown_at = ?, updated_at = NOW() WHERE id = ?`,
+          [event.occurred_at, deviceInternalId]
+        );
+      } else if (event.event_type === 'login') {
+        await execute(
+          `UPDATE devices SET last_user = ?, last_ip = ?, last_seen_at = NOW(), updated_at = NOW() WHERE id = ?`,
+          [event.logged_user ?? null, ipAddress ?? null, deviceInternalId]
+        );
+      }
+    } catch (error) {
+      logger.error('Falha ao salvar evento de atividade', { error, event });
     }
-
-    // Busca dados de hardware para CPU e GPU model
-    const hardware = await queryOne<{
-      cpu_model: string;
-      gpu_model: string;
-      ram_total_gb: number;
-    }>(
-      `SELECT cpu_model, gpu_model, ram_total_gb FROM device_hardware WHERE device_id = ? ORDER BY collected_at DESC LIMIT 1`,
-      [deviceInternalId]
-    );
-
-    // Busca dados de rede
-    const network = await queryOne<{
-      ipv4_address: string;
-      ipv4_subnet: string;
-      ipv4_gateway: string;
-      mac_address: string;
-      wifi_ssid: string;
-    }>(
-      `SELECT ipv4_address, ipv4_subnet, ipv4_gateway, mac_address, wifi_ssid
-       FROM device_network WHERE device_id = ? AND is_primary = 1 LIMIT 1`,
-      [deviceInternalId]
-    );
-
-    // Busca dados de disco
-    const disks = await query<{
-      drive_letter: string;
-      total_gb: number;
-      free_gb: number;
-    }>(
-      `SELECT drive_letter, total_gb, free_gb FROM device_disks WHERE device_id = ?`,
-      [deviceInternalId]
-    );
-
-    // Formata discos no formato esperado pelo OverlayCraft
-    const discosFormatted = disks
-      .map(d => `Disco: ${d.drive_letter} ${d.free_gb?.toFixed(1) ?? '0'} GB / ${d.total_gb?.toFixed(1) ?? '0'} GB livres | Fila: 0,00`)
-      .join('\n');
-
-    // Helper para formatar numero com seguranca
-    const formatPercent = (val: number | null | undefined): string => {
-      if (val == null || isNaN(val)) return '0%';
-      return `${Number(val).toFixed(1).replace('.', ',')}%`;
-    };
-    const formatTemp = (val: number | null | undefined): string => {
-      if (val == null || isNaN(val)) return '';
-      return `${Number(val).toFixed(1).replace('.', ',')} °C`;
-    };
-    const formatGb = (val: number | null | undefined): string => {
-      if (val == null || isNaN(val)) return '0 GB';
-      return `${Number(val).toFixed(1).replace('.', ',')} GB`;
-    };
-
-    // Monta o snapshot no formato OverlayCraft
-    const overlayCraftSnapshot: OverlayCraftSnapshot = {
-      serviceTag: device.serial_bios,
-      usuario: data.current_user ?? device.assigned_user ?? '',
-      so: `${device.os_name ?? ''} ${device.os_version ?? ''}`.trim(),
-      cpu: hardware?.cpu_model ?? '',
-      cpu_Uso: formatPercent(data.cpu_usage_percent),
-      cpu_Temp: formatTemp(data.cpu_temperature),
-      gpu: hardware?.gpu_model ?? '',
-      gpu_Uso: formatPercent(data.gpu_usage_percent),
-      gpu_Temp: formatTemp(data.gpu_temperature),
-      ram_Total: formatGb(hardware?.ram_total_gb),
-      ram_Uso: formatPercent(data.ram_usage_percent),
-      ram_PageWritesSec: '',
-      ram_ModifiedPages: '',
-      discos: discosFormatted || '',
-      ip: network?.ipv4_address ?? '',
-      mascara: network?.ipv4_subnet ?? '',
-      gateway: network?.ipv4_gateway ?? '',
-      ssidWiFi: network?.wifi_ssid ?? '',
-      mac: network?.mac_address ?? device.primary_mac_address ?? '',
-      bateria: '',
-      energia: '',
-      timestamp: new Date().toISOString(),
-    };
-
-    // Armazena no cache
-    snapshotCache.set(device.serial_bios.toUpperCase(), {
-      ...overlayCraftSnapshot,
-      receivedAt: new Date(),
-    });
-
-    logger.debug(`[Agent] Snapshot do device ${device.serial_bios} populado no cache`);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    logger.error('Erro ao popular cache do OverlayCraft', {
-      errorMsg,
-      errorStack,
-      deviceInternalId
-    });
   }
+
+  logAgentActivity(data.device_id, 'ACTIVITY_EVENTS', {
+    eventCount: savedCount,
+    types: data.events.map(e => e.event_type),
+  });
+
+  return { received: savedCount };
 }

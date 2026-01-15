@@ -7,6 +7,7 @@ import {
   commandResultRequestSchema,
   eventsRequestSchema,
   snapshotRequestSchema,
+  activityEventsRequestSchema,
 } from './agent.dto.js';
 import {
   enrollDevice,
@@ -17,6 +18,7 @@ import {
   saveCommandResult,
   saveEvents,
   processSnapshot,
+  processActivityEvents,
 } from './agent.service.js';
 import { ValidationError } from '../../middleware/error.middleware.js';
 
@@ -284,6 +286,46 @@ export async function snapshot(
     }
 
     const result = await processSnapshot(req.device.id, parseResult.data);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =============================================================================
+// ACTIVITY EVENTS (BOOT/SHUTDOWN/LOGIN/LOGOUT)
+// =============================================================================
+
+/**
+ * POST /api/agent/activity
+ * Recebe eventos de atividade (boot, shutdown, login, logout)
+ * ENDPOINT PRINCIPAL para o Patio de Controle
+ */
+export async function activityEvents(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.device) {
+      throw new ValidationError('Dispositivo nao autenticado');
+    }
+
+    const parseResult = activityEventsRequestSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw new ValidationError('Dados de eventos de atividade invalidos', errors);
+    }
+
+    // Extrai IP do cliente
+    const clientIp = req.ip || req.socket.remoteAddress || undefined;
+
+    const result = await processActivityEvents(req.device.id, parseResult.data, clientIp);
 
     res.json({
       success: true,

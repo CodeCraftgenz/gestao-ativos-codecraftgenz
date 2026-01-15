@@ -135,92 +135,11 @@ export async function registerByServiceTag(req: AuthenticatedRequest, res: Respo
   }
 }
 
-// Obtem dados em tempo real do OverlayCraft
-export async function getRealTimeData(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const deviceId = parseInt(req.params.id);
-    const device = await adminService.getDeviceById(deviceId);
-
-    if (!device) {
-      return res.status(404).json({ success: false, error: 'Dispositivo nao encontrado' });
-    }
-
-    // Busca o IP do dispositivo para conectar ao OverlayCraft
-    const network = await adminService.getDevicePrimaryNetwork(deviceId);
-    if (!network?.ip_address) {
-      return res.status(400).json({ success: false, error: 'IP do dispositivo nao encontrado' });
-    }
-
-    // Tenta buscar dados do OverlayCraft na porta 8585
-    const realTimeData = await adminService.fetchOverlayCraftData(network.ip_address);
-    res.json({ success: true, data: realTimeData });
-  } catch (error) {
-    next(error);
-  }
-}
-
 // Lista dispositivos pre-registrados (aguardando enrollment)
 export async function getPreRegisteredDevices(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const devices = await adminService.getPreRegisteredDevices();
     res.json({ success: true, data: devices });
-  } catch (error) {
-    next(error);
-  }
-}
-
-// Recebe snapshot do OverlayCraft
-export async function receiveSnapshot(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const snapshot = req.body;
-    await adminService.receiveOverlayCraftSnapshot(snapshot);
-    res.json({ success: true, message: 'Snapshot recebido com sucesso' });
-  } catch (error) {
-    next(error);
-  }
-}
-
-// Obtém snapshot por ServiceTag
-export async function getSnapshotByServiceTag(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const { serviceTag } = req.params;
-
-    if (!serviceTag) {
-      return res.status(400).json({ success: false, error: 'Service Tag e obrigatoria' });
-    }
-
-    const snapshot = await adminService.getSnapshotByServiceTag(serviceTag);
-    if (!snapshot) {
-      return res.status(404).json({ success: false, error: 'Nenhum snapshot encontrado para este Service Tag' });
-    }
-
-    res.json({ success: true, data: snapshot });
-  } catch (error) {
-    next(error);
-  }
-}
-
-// Lista todos os snapshots ativos
-export async function getActiveSnapshots(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const snapshots = await adminService.getActiveSnapshots();
-    res.json({ success: true, data: snapshots });
-  } catch (error) {
-    next(error);
-  }
-}
-
-// Obtém dados em tempo real de um dispositivo pelo cache (via ID)
-export async function getRealTimeDataFromCache(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const deviceId = parseInt(req.params.id);
-    const snapshot = await adminService.getRealTimeDataFromCache(deviceId);
-
-    if (!snapshot) {
-      return res.status(404).json({ success: false, error: 'Nenhum dado em tempo real disponivel para este dispositivo' });
-    }
-
-    res.json({ success: true, data: snapshot });
   } catch (error) {
     next(error);
   }

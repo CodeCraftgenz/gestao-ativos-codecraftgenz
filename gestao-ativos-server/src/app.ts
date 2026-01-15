@@ -10,7 +10,6 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import agentRoutes from './api/agent/agent.routes.js';
 import authRoutes from './api/auth/auth.routes.js';
 import adminRoutes from './api/admin/admin.routes.js';
-import overlayRoutes from './api/overlay/overlay.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -99,9 +98,6 @@ export function createApp(): Express {
 
   // Rotas de admin
   app.use('/api/admin', adminRoutes);
-
-  // Rotas do OverlayCraft (publicas - sem autenticacao)
-  app.use('/api/overlay', overlayRoutes);
 
   // ==========================================================================
   // ERROR HANDLING
