@@ -394,8 +394,8 @@ export interface OverlayCraftSnapshot {
   timestamp: string;
 }
 
-// Armazenamento em memória dos snapshots (por ServiceTag)
-const snapshotCache: Map<string, OverlayCraftSnapshot & { receivedAt: Date }> = new Map();
+// Armazenamento em memória dos snapshots (por ServiceTag) - exportado para uso pelo agent.service
+export const snapshotCache: Map<string, OverlayCraftSnapshot & { receivedAt: Date }> = new Map();
 
 /**
  * Recebe e armazena um snapshot do OverlayCraft

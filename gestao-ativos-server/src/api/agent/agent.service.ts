@@ -20,6 +20,7 @@ import {
   SnapshotResponse,
 } from './agent.dto.js';
 import type { PoolConnection } from 'mysql2/promise';
+import { snapshotCache, type OverlayCraftSnapshot } from '../admin/admin.service.js';
 
 // =============================================================================
 // TIPOS INTERNOS
@@ -736,5 +737,108 @@ export async function processSnapshot(
     ]
   );
 
+  // Popula o cache do OverlayCraft para o frontend de monitoramento em tempo real
+  await populateOverlayCraftCache(deviceInternalId, data);
+
   return { received: true };
+}
+
+/**
+ * Popula o cache do OverlayCraft com dados do snapshot do Agent
+ * Isso permite que o frontend de monitoramento em tempo real funcione com dados do Agent
+ */
+async function populateOverlayCraftCache(deviceInternalId: number, data: SnapshotRequest): Promise<void> {
+  try {
+    // Busca dados do device para montar o snapshot no formato OverlayCraft
+    const device = await queryOne<{
+      serial_bios: string;
+      hostname: string;
+      os_name: string;
+      os_version: string;
+      assigned_user: string;
+      primary_mac_address: string;
+    }>(
+      `SELECT serial_bios, hostname, os_name, os_version, assigned_user, primary_mac_address
+       FROM devices WHERE id = ?`,
+      [deviceInternalId]
+    );
+
+    if (!device?.serial_bios) {
+      return; // Não tem service tag, não pode popular o cache
+    }
+
+    // Busca dados de hardware para CPU e GPU model
+    const hardware = await queryOne<{
+      cpu_model: string;
+      gpu_model: string;
+      ram_total_gb: number;
+    }>(
+      `SELECT cpu_model, gpu_model, ram_total_gb FROM device_hardware WHERE device_id = ? ORDER BY collected_at DESC LIMIT 1`,
+      [deviceInternalId]
+    );
+
+    // Busca dados de rede
+    const network = await queryOne<{
+      ipv4_address: string;
+      ipv4_subnet: string;
+      ipv4_gateway: string;
+      mac_address: string;
+      wifi_ssid: string;
+    }>(
+      `SELECT ipv4_address, ipv4_subnet, ipv4_gateway, mac_address, wifi_ssid
+       FROM device_network WHERE device_id = ? AND is_primary = 1 LIMIT 1`,
+      [deviceInternalId]
+    );
+
+    // Busca dados de disco
+    const disks = await query<{
+      drive_letter: string;
+      total_gb: number;
+      free_gb: number;
+    }>(
+      `SELECT drive_letter, total_gb, free_gb FROM device_disks WHERE device_id = ?`,
+      [deviceInternalId]
+    );
+
+    // Formata discos no formato esperado pelo OverlayCraft
+    const discosFormatted = disks
+      .map(d => `Disco: ${d.drive_letter} ${d.free_gb?.toFixed(1) ?? '0'} GB / ${d.total_gb?.toFixed(1) ?? '0'} GB livres | Fila: 0,00`)
+      .join('\n');
+
+    // Monta o snapshot no formato OverlayCraft
+    const overlayCraftSnapshot: OverlayCraftSnapshot = {
+      serviceTag: device.serial_bios,
+      usuario: data.current_user ?? device.assigned_user ?? '',
+      so: `${device.os_name ?? ''} ${device.os_version ?? ''}`.trim(),
+      cpu: hardware?.cpu_model ?? '',
+      cpu_Uso: data.cpu_usage_percent != null ? `${data.cpu_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
+      cpu_Temp: data.cpu_temperature != null ? `${data.cpu_temperature.toFixed(1).replace('.', ',')} °C` : '',
+      gpu: hardware?.gpu_model ?? '',
+      gpu_Uso: data.gpu_usage_percent != null ? `${data.gpu_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
+      gpu_Temp: data.gpu_temperature != null ? `${data.gpu_temperature.toFixed(1).replace('.', ',')} °C` : '',
+      ram_Total: hardware?.ram_total_gb != null ? `${hardware.ram_total_gb.toFixed(1).replace('.', ',')} GB` : '0 GB',
+      ram_Uso: data.ram_usage_percent != null ? `${data.ram_usage_percent.toFixed(1).replace('.', ',')}%` : '0%',
+      ram_PageWritesSec: '',
+      ram_ModifiedPages: '',
+      discos: discosFormatted || '',
+      ip: network?.ipv4_address ?? '',
+      mascara: network?.ipv4_subnet ?? '',
+      gateway: network?.ipv4_gateway ?? '',
+      ssidWiFi: network?.wifi_ssid ?? '',
+      mac: network?.mac_address ?? device.primary_mac_address ?? '',
+      bateria: '',
+      energia: '',
+      timestamp: new Date().toISOString(),
+    };
+
+    // Armazena no cache
+    snapshotCache.set(device.serial_bios.toUpperCase(), {
+      ...overlayCraftSnapshot,
+      receivedAt: new Date(),
+    });
+
+    logger.debug(`[Agent] Snapshot do device ${device.serial_bios} populado no cache`);
+  } catch (error) {
+    logger.error('Erro ao popular cache do OverlayCraft', { error, deviceInternalId });
+  }
 }
