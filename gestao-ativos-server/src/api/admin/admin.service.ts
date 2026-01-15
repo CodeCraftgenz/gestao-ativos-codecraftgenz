@@ -1,5 +1,14 @@
 import { query, queryOne, execute, insert } from '../../config/database.js';
-import type { Device, DashboardStats } from '../../types/index.js';
+import type {
+  Device,
+  DashboardStats,
+  DashboardAnalytics,
+  HourlyActivity,
+  DeviceHealthSummary,
+  DeviceUsageMetric,
+  RecentActivity,
+  PlanUsage,
+} from '../../types/index.js';
 import { AppError } from '../../middleware/error.middleware.js';
 
 export async function getStats(): Promise<DashboardStats> {
@@ -283,5 +292,202 @@ export async function getDevicePrimaryNetwork(deviceId: number): Promise<{
      LIMIT 1`,
     [deviceId]
   );
+}
+
+// =============================================================================
+// DASHBOARD ANALYTICS - Metricas avancadas para graficos
+// =============================================================================
+
+/**
+ * Retorna atividade por hora das ultimas 24 horas (heartbeats)
+ */
+async function getHourlyActivity(): Promise<HourlyActivity[]> {
+  const rows = await query<{
+    hour: number;
+    heartbeats: number;
+    active_devices: number;
+  }>(`
+    SELECT
+      HOUR(received_at) as hour,
+      COUNT(*) as heartbeats,
+      COUNT(DISTINCT device_id) as active_devices
+    FROM device_heartbeats
+    WHERE received_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    GROUP BY HOUR(received_at)
+    ORDER BY hour ASC
+  `);
+
+  // Preenche horas sem dados com zeros
+  const result: HourlyActivity[] = [];
+  for (let h = 0; h < 24; h++) {
+    const found = rows.find(r => r.hour === h);
+    result.push({
+      hour: h,
+      heartbeats: found?.heartbeats || 0,
+      active_devices: found?.active_devices || 0,
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Retorna resumo de saude dos dispositivos
+ */
+async function getHealthSummary(): Promise<DeviceHealthSummary> {
+  // Online: status = 'online'
+  // Offline: status = 'offline' ou 'approved'
+  // Alert: disco > 90% ou sem sinal ha mais de 24h
+  const result = await queryOne<{
+    online: number;
+    offline: number;
+    alert: number;
+  }>(`
+    SELECT
+      SUM(CASE WHEN d.status = 'online' THEN 1 ELSE 0 END) as online,
+      SUM(CASE WHEN d.status IN ('offline', 'approved') THEN 1 ELSE 0 END) as offline,
+      SUM(CASE
+        WHEN d.last_seen_at < DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1
+        WHEN EXISTS (
+          SELECT 1 FROM device_disks dd
+          WHERE dd.device_id = d.id AND dd.used_percent > 90
+        ) THEN 1
+        ELSE 0
+      END) as alert
+    FROM devices d
+    WHERE d.status NOT IN ('pending', 'blocked')
+  `);
+
+  return {
+    online: result?.online || 0,
+    offline: result?.offline || 0,
+    alert: result?.alert || 0,
+  };
+}
+
+/**
+ * Retorna metricas de uso/ociosidade dos dispositivos
+ */
+async function getUsageMetrics(): Promise<DeviceUsageMetric[]> {
+  return query<DeviceUsageMetric>(`
+    SELECT
+      d.id as device_id,
+      d.hostname,
+      COALESCE(AVG(h.cpu_usage_percent), 0) as avg_cpu_percent,
+      COALESCE(AVG(h.ram_usage_percent), 0) as avg_ram_percent,
+      COALESCE(MAX(h.uptime_seconds) / 3600, 0) as uptime_hours,
+      CASE
+        WHEN AVG(h.cpu_usage_percent) < 10 AND AVG(h.ram_usage_percent) < 30 THEN 90
+        WHEN AVG(h.cpu_usage_percent) < 20 AND AVG(h.ram_usage_percent) < 50 THEN 70
+        WHEN AVG(h.cpu_usage_percent) < 40 THEN 40
+        ELSE 10
+      END as idle_score
+    FROM devices d
+    LEFT JOIN device_heartbeats h ON d.id = h.device_id
+      AND h.received_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    WHERE d.status NOT IN ('pending', 'blocked')
+    GROUP BY d.id, d.hostname
+    ORDER BY idle_score DESC
+    LIMIT 10
+  `);
+}
+
+/**
+ * Retorna atividades recentes (ultimos heartbeats e eventos)
+ */
+async function getRecentActivity(): Promise<RecentActivity[]> {
+  // Combina heartbeats e eventos de atividade
+  const heartbeats = await query<RecentActivity>(`
+    SELECT
+      d.id as device_id,
+      d.hostname,
+      d.assigned_user,
+      h.ip_address,
+      d.last_seen_at,
+      d.status,
+      'heartbeat' as event_type
+    FROM devices d
+    INNER JOIN (
+      SELECT device_id, ip_address, MAX(received_at) as max_time
+      FROM device_heartbeats
+      GROUP BY device_id
+    ) latest ON d.id = latest.device_id
+    INNER JOIN device_heartbeats h ON h.device_id = latest.device_id AND h.received_at = latest.max_time
+    WHERE d.status NOT IN ('pending', 'blocked')
+    ORDER BY d.last_seen_at DESC
+    LIMIT 10
+  `);
+
+  return heartbeats;
+}
+
+/**
+ * Retorna uso do plano atual
+ */
+async function getPlanUsage(userId: number): Promise<PlanUsage> {
+  // Busca plano do usuario
+  const subscription = await queryOne<{
+    plan_name: string;
+    max_devices: number;
+    data_retention_days: number;
+  }>(`
+    SELECT
+      p.name as plan_name,
+      p.max_devices,
+      p.data_retention_days
+    FROM subscriptions s
+    INNER JOIN plans p ON s.plan_id = p.id
+    WHERE s.user_id = ? AND s.status = 'active'
+    ORDER BY s.id DESC
+    LIMIT 1
+  `, [userId]);
+
+  // Conta dispositivos atuais
+  const deviceCount = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) as total FROM devices WHERE status NOT IN ('blocked')`
+  );
+
+  const currentDevices = deviceCount?.total || 0;
+  const maxDevices = subscription?.max_devices || 5;
+  const usagePercent = maxDevices > 0 ? Math.round((currentDevices / maxDevices) * 100) : 0;
+
+  return {
+    current_devices: currentDevices,
+    max_devices: maxDevices,
+    usage_percent: usagePercent,
+    plan_name: subscription?.plan_name || 'Gratuito',
+    retention_days: subscription?.data_retention_days || 30,
+    near_limit: usagePercent >= 80,
+  };
+}
+
+/**
+ * Endpoint principal de analytics do dashboard
+ */
+export async function getDashboardAnalytics(userId: number): Promise<DashboardAnalytics> {
+  const [
+    stats,
+    hourlyActivity,
+    healthSummary,
+    usageMetrics,
+    recentActivity,
+    planUsage,
+  ] = await Promise.all([
+    getStats(),
+    getHourlyActivity(),
+    getHealthSummary(),
+    getUsageMetrics(),
+    getRecentActivity(),
+    getPlanUsage(userId),
+  ]);
+
+  return {
+    stats,
+    hourly_activity: hourlyActivity,
+    health_summary: healthSummary,
+    usage_metrics: usageMetrics,
+    recent_activity: recentActivity,
+    plan_usage: planUsage,
+  };
 }
 

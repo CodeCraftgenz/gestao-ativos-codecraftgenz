@@ -128,6 +128,56 @@ export interface DashboardStats {
   blockedDevices: number;
 }
 
+// Dashboard Analytics - Metricas avancadas para graficos
+export interface HourlyActivity {
+  hour: number;
+  heartbeats: number;
+  active_devices: number;
+}
+
+export interface DeviceHealthSummary {
+  online: number;
+  offline: number;
+  alert: number;
+}
+
+export interface DeviceUsageMetric {
+  device_id: number;
+  hostname: string;
+  avg_cpu_percent: number;
+  avg_ram_percent: number;
+  uptime_hours: number;
+  idle_score: number;
+}
+
+export interface RecentActivity {
+  device_id: number;
+  hostname: string;
+  assigned_user: string | null;
+  ip_address: string | null;
+  last_seen_at: string;
+  status: DeviceStatus;
+  event_type?: string;
+}
+
+export interface PlanUsage {
+  current_devices: number;
+  max_devices: number;
+  usage_percent: number;
+  plan_name: string;
+  retention_days: number;
+  near_limit: boolean;
+}
+
+export interface DashboardAnalytics {
+  stats: DashboardStats;
+  hourly_activity: HourlyActivity[];
+  health_summary: DeviceHealthSummary;
+  usage_metrics: DeviceUsageMetric[];
+  recent_activity: RecentActivity[];
+  plan_usage: PlanUsage;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

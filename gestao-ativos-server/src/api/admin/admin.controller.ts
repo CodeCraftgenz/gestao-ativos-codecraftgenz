@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../types/index.js';
 import * as adminService from './admin.service.js';
+import { runLGPDCleanup, getLGPDStatus } from '../../jobs/lgpd-cleanup.job.js';
 
 export async function getStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -140,6 +141,37 @@ export async function getPreRegisteredDevices(req: AuthenticatedRequest, res: Re
   try {
     const devices = await adminService.getPreRegisteredDevices();
     res.json({ success: true, data: devices });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Dashboard Analytics - metricas agregadas para graficos
+export async function getDashboardAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const analytics = await adminService.getDashboardAnalytics(userId);
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// LGPD - Status da limpeza automatica
+export async function getLGPDCleanupStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const status = await getLGPDStatus();
+    res.json({ success: true, data: status });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// LGPD - Executar limpeza manual
+export async function executeLGPDCleanup(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await runLGPDCleanup();
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

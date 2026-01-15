@@ -50,6 +50,53 @@ function getAgentConfig(isActivated: boolean = true): AgentConfig {
 }
 
 // =============================================================================
+// LIMITE DE DISPOSITIVOS POR PLANO
+// =============================================================================
+
+interface PlanLimits {
+  max_devices: number;
+  current_devices: number;
+  can_add_device: boolean;
+  plan_name: string;
+}
+
+/**
+ * Verifica limite de dispositivos do plano atual
+ * Retorna se pode adicionar novo dispositivo
+ */
+async function checkPlanDeviceLimit(): Promise<PlanLimits> {
+  // Busca plano ativo (por enquanto busca primeiro plano ativo de qualquer usuario admin)
+  const subscription = await queryOne<{
+    plan_name: string;
+    max_devices: number;
+  }>(`
+    SELECT p.name as plan_name, p.max_devices
+    FROM subscriptions s
+    INNER JOIN plans p ON s.plan_id = p.id
+    WHERE s.status = 'active'
+    ORDER BY p.max_devices DESC
+    LIMIT 1
+  `);
+
+  // Se nao tem plano, usa limite padrao (Gratuito = 5 dispositivos)
+  const maxDevices = subscription?.max_devices ?? 5;
+  const planName = subscription?.plan_name ?? 'Gratuito';
+
+  // Conta dispositivos ativos (nao bloqueados)
+  const deviceCount = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) as total FROM devices WHERE status NOT IN ('blocked')`
+  );
+  const currentDevices = deviceCount?.total ?? 0;
+
+  return {
+    max_devices: maxDevices,
+    current_devices: currentDevices,
+    can_add_device: currentDevices < maxDevices,
+    plan_name: planName,
+  };
+}
+
+// =============================================================================
 // ENROLLMENT SERVICE
 // =============================================================================
 
@@ -153,6 +200,22 @@ async function handleExistingDevice(
 }
 
 async function createNewDevice(data: EnrollRequest): Promise<EnrollResponse> {
+  // Verifica limite de dispositivos do plano
+  const planLimits = await checkPlanDeviceLimit();
+  if (!planLimits.can_add_device) {
+    logAgentActivity(data.device_id, 'ENROLLMENT_BLOCKED_LIMIT', {
+      hostname: data.hostname,
+      currentDevices: planLimits.current_devices,
+      maxDevices: planLimits.max_devices,
+      planName: planLimits.plan_name,
+    });
+
+    return {
+      status: 'rejected',
+      message: `Limite de dispositivos atingido (${planLimits.current_devices}/${planLimits.max_devices}). Atualize seu plano ${planLimits.plan_name} para adicionar mais dispositivos.`,
+    };
+  }
+
   const status = config.agent.autoApproveDevices ? DeviceStatus.APPROVED : DeviceStatus.PENDING;
 
   const deviceId = await insert(

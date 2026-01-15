@@ -316,3 +316,56 @@ export interface DashboardStats {
   pendingDevices: number;
   blockedDevices: number;
 }
+
+// =============================================================================
+// DASHBOARD ANALYTICS (Graficos e Metricas Avancadas)
+// =============================================================================
+
+export interface HourlyActivity {
+  hour: number;
+  heartbeats: number;
+  active_devices: number;
+}
+
+export interface DeviceHealthSummary {
+  online: number;
+  offline: number;
+  alert: number; // Disco > 90% ou sem sinal ha 24h
+}
+
+export interface DeviceUsageMetric {
+  device_id: number;
+  hostname: string;
+  avg_cpu_percent: number;
+  avg_ram_percent: number;
+  uptime_hours: number;
+  idle_score: number; // 0-100, quanto maior mais ocioso
+}
+
+export interface RecentActivity {
+  device_id: number;
+  hostname: string;
+  assigned_user: string | null;
+  ip_address: string | null;
+  last_seen_at: Date;
+  status: DeviceStatus;
+  event_type?: string;
+}
+
+export interface PlanUsage {
+  current_devices: number;
+  max_devices: number;
+  usage_percent: number;
+  plan_name: string;
+  retention_days: number;
+  near_limit: boolean; // >= 80%
+}
+
+export interface DashboardAnalytics {
+  stats: DashboardStats;
+  hourly_activity: HourlyActivity[];
+  health_summary: DeviceHealthSummary;
+  usage_metrics: DeviceUsageMetric[];
+  recent_activity: RecentActivity[];
+  plan_usage: PlanUsage;
+}

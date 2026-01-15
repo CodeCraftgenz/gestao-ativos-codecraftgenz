@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 // Dashboard
 router.get('/dashboard/stats', adminController.getStats);
+router.get('/dashboard/analytics', adminController.getDashboardAnalytics);
 
 // Devices
 router.get('/devices', adminController.getDevices);
@@ -21,5 +22,9 @@ router.post('/devices/:id/block', adminController.blockDevice);
 router.post('/devices/:id/unblock', adminController.unblockDevice);
 router.post('/devices/:id/command', adminController.sendCommand);
 router.post('/devices/register-by-service-tag', adminController.registerByServiceTag);
+
+// LGPD
+router.get('/lgpd/status', adminController.getLGPDCleanupStatus);
+router.post('/lgpd/cleanup', adminController.executeLGPDCleanup);
 
 export default router;

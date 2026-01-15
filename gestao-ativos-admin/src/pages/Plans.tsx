@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, X, Zap, Building2, Rocket, CreditCard, TrendingUp } from 'lucide-react';
+import { Check, X, Zap, Building2, CreditCard, TrendingUp, Shield, Crown, Star } from 'lucide-react';
 
 interface Plan {
   id: number;
@@ -13,11 +13,14 @@ interface Plan {
   feature_reports: boolean;
   feature_geoip: boolean;
   feature_api_access: boolean;
+  feature_priority_support: boolean;
+  feature_custom_branding: boolean;
   data_retention_days: number;
   price_monthly_cents: number;
   price_yearly_cents: number;
   is_active: boolean;
   is_default: boolean;
+  highlight?: boolean;
 }
 
 interface Subscription {
@@ -37,9 +40,17 @@ interface UsageStats {
 }
 
 const planIcons: Record<string, React.ElementType> = {
-  basico: Zap,
+  gratuito: Zap,
+  basico: Star,
   profissional: Building2,
-  corporativo: Rocket,
+  empresarial: Crown,
+};
+
+const planColors: Record<string, string> = {
+  gratuito: 'gray',
+  basico: 'blue',
+  profissional: 'green',
+  empresarial: 'yellow',
 };
 
 export function Plans() {
@@ -47,6 +58,7 @@ export function Plans() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageStats>({ devices_count: 0, users_count: 0, filiais_count: 0 });
   const [loading, setLoading] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     loadData();
@@ -56,13 +68,13 @@ export function Plans() {
     try {
       setLoading(true);
 
-      // Mock data
+      // Planos do Patio de Controle
       setPlans([
         {
           id: 1,
-          name: 'Basico',
-          slug: 'basico',
-          description: 'Ideal para pequenos negocios',
+          name: 'Gratuito',
+          slug: 'gratuito',
+          description: 'Para testar e pequenos projetos',
           max_devices: 5,
           max_users: 1,
           max_filiais: 1,
@@ -70,6 +82,8 @@ export function Plans() {
           feature_reports: false,
           feature_geoip: false,
           feature_api_access: false,
+          feature_priority_support: false,
+          feature_custom_branding: false,
           data_retention_days: 30,
           price_monthly_cents: 0,
           price_yearly_cents: 0,
@@ -78,27 +92,50 @@ export function Plans() {
         },
         {
           id: 2,
-          name: 'Profissional',
-          slug: 'profissional',
-          description: 'Para empresas em crescimento',
-          max_devices: 20,
+          name: 'Basico',
+          slug: 'basico',
+          description: 'Ideal para pequenas empresas',
+          max_devices: 25,
           max_users: 3,
-          max_filiais: 3,
+          max_filiais: 2,
           feature_alerts: true,
-          feature_reports: true,
+          feature_reports: false,
           feature_geoip: false,
           feature_api_access: false,
+          feature_priority_support: false,
+          feature_custom_branding: false,
           data_retention_days: 90,
-          price_monthly_cents: 9900,
-          price_yearly_cents: 99900,
+          price_monthly_cents: 4900,
+          price_yearly_cents: 47000,
           is_active: true,
           is_default: false,
         },
         {
           id: 3,
-          name: 'Corporativo',
-          slug: 'corporativo',
-          description: 'Solucao completa para grandes empresas',
+          name: 'Profissional',
+          slug: 'profissional',
+          description: 'Para empresas em crescimento',
+          max_devices: 100,
+          max_users: 10,
+          max_filiais: 10,
+          feature_alerts: true,
+          feature_reports: true,
+          feature_geoip: true,
+          feature_api_access: false,
+          feature_priority_support: true,
+          feature_custom_branding: false,
+          data_retention_days: 180,
+          price_monthly_cents: 14900,
+          price_yearly_cents: 143000,
+          is_active: true,
+          is_default: false,
+          highlight: true,
+        },
+        {
+          id: 4,
+          name: 'Empresarial',
+          slug: 'empresarial',
+          description: 'Solucao completa para grandes organizacoes',
           max_devices: 999999,
           max_users: 999,
           max_filiais: 999,
@@ -106,9 +143,11 @@ export function Plans() {
           feature_reports: true,
           feature_geoip: true,
           feature_api_access: true,
+          feature_priority_support: true,
+          feature_custom_branding: true,
           data_retention_days: 365,
-          price_monthly_cents: 29900,
-          price_yearly_cents: 299900,
+          price_monthly_cents: 39900,
+          price_yearly_cents: 383000,
           is_active: true,
           is_default: false,
         },
@@ -117,7 +156,7 @@ export function Plans() {
       setSubscription({
         id: 1,
         plan_id: 1,
-        plan_name: 'Basico',
+        plan_name: 'Gratuito',
         status: 'trial',
         started_at: new Date().toISOString(),
         expires_at: null,
@@ -169,6 +208,12 @@ export function Plans() {
     );
   }
 
+  function getSavingsPercent(monthly: number, yearly: number): number {
+    if (monthly === 0) return 0;
+    const yearlyMonthly = yearly / 12;
+    return Math.round(((monthly - yearlyMonthly) / monthly) * 100);
+  }
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -187,7 +232,7 @@ export function Plans() {
         <div className="page-header-row">
           <div>
             <h1 className="page-title">Planos e Assinatura</h1>
-            <p className="page-description">Gerencie seu plano e acompanhe o uso do sistema</p>
+            <p className="page-description">Escolha o plano ideal para o seu negocio</p>
           </div>
         </div>
       </div>
@@ -227,11 +272,11 @@ export function Plans() {
         <div className="stat-card yellow">
           <div className="stat-card-header">
             <div className="stat-card-icon">
-              <Building2 />
+              <Shield />
             </div>
           </div>
           <div className="stat-card-value">{currentPlan?.data_retention_days || 0}</div>
-          <div className="stat-card-label">Dias de Retencao</div>
+          <div className="stat-card-label">Dias de Retencao (LGPD)</div>
         </div>
       </div>
 
@@ -266,50 +311,106 @@ export function Plans() {
                 <span className="text-gray-600">Uso do plano</span>
                 <span className="font-medium text-gray-900">{usagePercent.toFixed(0)}%</span>
               </div>
-              <div className="progress-bar-container">
+              <div className="progress-bar">
                 <div
-                  className={`progress-bar ${usagePercent >= 90 ? 'danger' : usagePercent >= 70 ? 'warning' : 'success'}`}
+                  className={`progress-bar-fill ${usagePercent >= 90 ? 'bg-danger' : usagePercent >= 70 ? 'bg-warning' : 'bg-success'}`}
                   style={{ width: `${usagePercent}%` }}
                 />
               </div>
               {usagePercent >= 80 && (
                 <div className="alert alert-warning mt-4">
                   <TrendingUp className="alert-icon" />
-                  <span>Voce esta proximo do limite do seu plano. Considere fazer upgrade.</span>
+                  <span>Voce esta proximo do limite do seu plano. Considere fazer upgrade para continuar adicionando dispositivos.</span>
                 </div>
               )}
+            </div>
+
+            {/* LGPD Notice */}
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs text-gray-500">
+                <Shield size={12} className="inline mr-1" />
+                <strong>LGPD:</strong> Seus dados de telemetria sao armazenados por {currentPlan.data_retention_days} dias.
+                Apos este periodo, sao automaticamente anonimizados ou excluidos conforme a Lei Geral de Protecao de Dados.
+              </p>
             </div>
           </div>
         </div>
       )}
+
+      {/* Billing Toggle */}
+      <div className="flex items-center justify-center gap-4 mb-6">
+        <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
+          Mensal
+        </span>
+        <button
+          type="button"
+          onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
+          className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"
+          style={{ background: billingPeriod === 'yearly' ? 'var(--primary-500)' : 'var(--gray-300)' }}
+          aria-label="Alternar entre cobranca mensal e anual"
+        >
+          <span
+            className="inline-block h-4 w-4 transform rounded-full bg-white transition"
+            style={{ transform: billingPeriod === 'yearly' ? 'translateX(1.375rem)' : 'translateX(0.25rem)' }}
+          />
+        </button>
+        <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-gray-900' : 'text-gray-500'}`}>
+          Anual
+        </span>
+        {billingPeriod === 'yearly' && (
+          <span className="badge badge-success">Economize ate 20%</span>
+        )}
+      </div>
 
       {/* Plans Grid */}
       <div className="page-header mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Planos Disponiveis</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => {
           const Icon = planIcons[plan.slug] || Zap;
           const isCurrentPlan = plan.id === subscription?.plan_id;
+          const colorClass = planColors[plan.slug] || 'blue';
+          const savings = getSavingsPercent(plan.price_monthly_cents, plan.price_yearly_cents);
+          const displayPrice = billingPeriod === 'yearly' ? Math.round(plan.price_yearly_cents / 12) : plan.price_monthly_cents;
 
           return (
             <div
               key={plan.id}
-              className={`card ${isCurrentPlan ? 'border-2 border-primary-500' : ''}`}
-              style={isCurrentPlan ? { borderColor: 'var(--primary-500)', borderWidth: '2px' } : {}}
+              className={`card ${plan.highlight ? 'ring-2 ring-primary-500' : ''} ${isCurrentPlan ? 'border-2 border-primary-500' : ''}`}
+              style={{
+                ...(plan.highlight ? { boxShadow: '0 4px 20px rgba(59, 130, 246, 0.15)' } : {}),
+                position: 'relative',
+              }}
             >
+              {/* Highlight Badge */}
+              {plan.highlight && (
+                <div
+                  className="badge badge-primary"
+                  style={{
+                    position: 'absolute',
+                    top: '-0.75rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '0.625rem',
+                  }}
+                >
+                  Mais Popular
+                </div>
+              )}
+
               {/* Plan Header */}
-              <div className="card-header" style={{ background: 'var(--gray-50)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="stat-card-icon" style={{ width: '40px', height: '40px' }}>
-                    <Icon />
+              <div className="card-header" style={{ background: 'var(--gray-50)', paddingBottom: '0.75rem' }}>
+                <div className="flex items-center gap-2">
+                  <div className={`stat-card-icon ${colorClass}`} style={{ width: '36px', height: '36px' }}>
+                    <Icon size={18} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{plan.name}</h3>
+                    <h3 className="font-semibold text-gray-900" style={{ fontSize: '0.9375rem' }}>{plan.name}</h3>
                     {isCurrentPlan && (
-                      <span className="badge badge-info" style={{ fontSize: '0.625rem', padding: '0.125rem 0.5rem' }}>
-                        Plano Atual
+                      <span className="badge badge-info" style={{ fontSize: '0.5625rem', padding: '0.0625rem 0.375rem' }}>
+                        Atual
                       </span>
                     )}
                   </div>
@@ -317,91 +418,103 @@ export function Plans() {
               </div>
 
               {/* Price */}
-              <div className="card-body" style={{ borderBottom: '1px solid var(--gray-100)' }}>
+              <div className="card-body" style={{ borderBottom: '1px solid var(--gray-100)', padding: '1rem' }}>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-gray-900">
-                    {formatPrice(plan.price_monthly_cents)}
+                  <span className="text-xl font-bold text-gray-900">
+                    {formatPrice(displayPrice)}
                   </span>
-                  {plan.price_monthly_cents > 0 && (
-                    <span className="text-gray-500 text-sm">/mes</span>
+                  {displayPrice > 0 && (
+                    <span className="text-gray-500 text-xs">/mes</span>
                   )}
                 </div>
-                {plan.price_yearly_cents > 0 && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    ou {formatPrice(plan.price_yearly_cents)}/ano
+                {billingPeriod === 'yearly' && savings > 0 && (
+                  <p className="text-xs text-success-600 mt-1">
+                    Economize {savings}% no plano anual
                   </p>
                 )}
-                <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
+                <p className="text-xs text-gray-600 mt-2">{plan.description}</p>
               </div>
 
               {/* Features */}
-              <div className="card-body space-y-3">
+              <div className="card-body space-y-2" style={{ padding: '1rem', fontSize: '0.8125rem' }}>
                 <div className="flex items-center gap-2">
-                  <Check className="text-success-500" style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
-                  <span className="text-sm text-gray-700">
-                    Ate {plan.max_devices === 999999 ? 'ilimitados' : plan.max_devices} dispositivos
+                  <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
+                  <span className="text-gray-700">
+                    {plan.max_devices === 999999 ? 'Dispositivos ilimitados' : `Ate ${plan.max_devices} dispositivos`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
-                  <span className="text-sm text-gray-700">
-                    Ate {plan.max_users === 999 ? 'ilimitados' : plan.max_users} usuarios
+                  <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
+                  <span className="text-gray-700">
+                    {plan.max_users === 999 ? 'Usuarios ilimitados' : `${plan.max_users} usuario${plan.max_users > 1 ? 's' : ''}`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
-                  <span className="text-sm text-gray-700">
+                  <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
+                  <span className="text-gray-700">
                     {plan.data_retention_days} dias de retencao
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.feature_alerts ? (
-                    <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
+                    <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
                   ) : (
-                    <X style={{ width: '18px', height: '18px', color: 'var(--gray-300)' }} />
+                    <X style={{ width: '16px', height: '16px', color: 'var(--gray-300)', flexShrink: 0 }} />
                   )}
-                  <span className={`text-sm ${plan.feature_alerts ? 'text-gray-700' : 'text-gray-400'}`}>
+                  <span className={plan.feature_alerts ? 'text-gray-700' : 'text-gray-400'}>
                     Alertas automaticos
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.feature_reports ? (
-                    <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
+                    <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
                   ) : (
-                    <X style={{ width: '18px', height: '18px', color: 'var(--gray-300)' }} />
+                    <X style={{ width: '16px', height: '16px', color: 'var(--gray-300)', flexShrink: 0 }} />
                   )}
-                  <span className={`text-sm ${plan.feature_reports ? 'text-gray-700' : 'text-gray-400'}`}>
+                  <span className={plan.feature_reports ? 'text-gray-700' : 'text-gray-400'}>
                     Relatorios avancados
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.feature_geoip ? (
-                    <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
+                    <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
                   ) : (
-                    <X style={{ width: '18px', height: '18px', color: 'var(--gray-300)' }} />
+                    <X style={{ width: '16px', height: '16px', color: 'var(--gray-300)', flexShrink: 0 }} />
                   )}
-                  <span className={`text-sm ${plan.feature_geoip ? 'text-gray-700' : 'text-gray-400'}`}>
-                    Geolocalizacao por IP
+                  <span className={plan.feature_geoip ? 'text-gray-700' : 'text-gray-400'}>
+                    Geolocalizacao IP
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.feature_api_access ? (
-                    <Check style={{ width: '18px', height: '18px', color: 'var(--success-500)' }} />
+                    <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
                   ) : (
-                    <X style={{ width: '18px', height: '18px', color: 'var(--gray-300)' }} />
+                    <X style={{ width: '16px', height: '16px', color: 'var(--gray-300)', flexShrink: 0 }} />
                   )}
-                  <span className={`text-sm ${plan.feature_api_access ? 'text-gray-700' : 'text-gray-400'}`}>
+                  <span className={plan.feature_api_access ? 'text-gray-700' : 'text-gray-400'}>
                     Acesso a API
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {plan.feature_priority_support ? (
+                    <Check style={{ width: '16px', height: '16px', color: 'var(--success-500)', flexShrink: 0 }} />
+                  ) : (
+                    <X style={{ width: '16px', height: '16px', color: 'var(--gray-300)', flexShrink: 0 }} />
+                  )}
+                  <span className={plan.feature_priority_support ? 'text-gray-700' : 'text-gray-400'}>
+                    Suporte prioritario
                   </span>
                 </div>
 
                 {/* Action Button */}
-                <div className="pt-4">
+                <div className="pt-3">
                   <button
-                    className={`btn w-full ${isCurrentPlan ? 'btn-secondary' : 'btn-primary'}`}
+                    type="button"
+                    className={`btn w-full ${isCurrentPlan ? 'btn-secondary' : plan.highlight ? 'btn-primary' : 'btn-secondary'}`}
                     disabled={isCurrentPlan}
+                    style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}
                   >
-                    {isCurrentPlan ? 'Plano Atual' : 'Assinar'}
+                    {isCurrentPlan ? 'Plano Atual' : plan.price_monthly_cents === 0 ? 'Comecar Gratis' : 'Assinar Agora'}
                   </button>
                 </div>
               </div>
@@ -410,19 +523,134 @@ export function Plans() {
         })}
       </div>
 
+      {/* Features Comparison */}
+      <div className="card mt-6">
+        <div className="card-header">
+          <h2 className="card-title">Comparacao de Recursos</h2>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Recurso</th>
+                {plans.map(p => (
+                  <th key={p.id} className="text-center">{p.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Dispositivos</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">{p.max_devices === 999999 ? 'Ilimitado' : p.max_devices}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Usuarios</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">{p.max_users === 999 ? 'Ilimitado' : p.max_users}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Filiais</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">{p.max_filiais === 999 ? 'Ilimitado' : p.max_filiais}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Retencao de Dados (LGPD)</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">{p.data_retention_days} dias</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Alertas Automaticos</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">
+                    {p.feature_alerts ? <Check size={16} style={{ color: 'var(--success-500)', margin: '0 auto' }} /> : <X size={16} style={{ color: 'var(--gray-300)', margin: '0 auto' }} />}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td>Relatorios Avancados</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">
+                    {p.feature_reports ? <Check size={16} style={{ color: 'var(--success-500)', margin: '0 auto' }} /> : <X size={16} style={{ color: 'var(--gray-300)', margin: '0 auto' }} />}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td>Geolocalizacao por IP</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">
+                    {p.feature_geoip ? <Check size={16} style={{ color: 'var(--success-500)', margin: '0 auto' }} /> : <X size={16} style={{ color: 'var(--gray-300)', margin: '0 auto' }} />}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td>Acesso a API</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">
+                    {p.feature_api_access ? <Check size={16} style={{ color: 'var(--success-500)', margin: '0 auto' }} /> : <X size={16} style={{ color: 'var(--gray-300)', margin: '0 auto' }} />}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td>Suporte Prioritario</td>
+                {plans.map(p => (
+                  <td key={p.id} className="text-center">
+                    {p.feature_priority_support ? <Check size={16} style={{ color: 'var(--success-500)', margin: '0 auto' }} /> : <X size={16} style={{ color: 'var(--gray-300)', margin: '0 auto' }} />}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Contact Section */}
       <div className="card mt-6">
         <div className="card-body">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h3 className="font-semibold text-gray-900">Precisa de mais recursos?</h3>
+              <h3 className="font-semibold text-gray-900">Precisa de um plano personalizado?</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Entre em contato para planos personalizados ou para tirar duvidas.
+                Entre em contato para volumes maiores ou necessidades especificas.
               </p>
             </div>
-            <button className="btn btn-secondary">
+            <button type="button" className="btn btn-secondary">
               Falar com vendas
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ Section */}
+      <div className="card mt-6">
+        <div className="card-header">
+          <h2 className="card-title">Perguntas Frequentes</h2>
+        </div>
+        <div className="card-body space-y-4">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-1">O que acontece se eu atingir o limite de dispositivos?</h4>
+            <p className="text-sm text-gray-600">
+              Novos dispositivos nao poderao ser adicionados ate que voce faca upgrade do plano ou remova dispositivos existentes.
+              Os dispositivos ja cadastrados continuarao funcionando normalmente.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 mb-1">Como funciona a retencao de dados (LGPD)?</h4>
+            <p className="text-sm text-gray-600">
+              Os dados de telemetria (heartbeats, snapshots, eventos) sao armazenados pelo periodo definido no seu plano.
+              Apos esse periodo, os dados sao automaticamente anonimizados ou excluidos para conformidade com a LGPD.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 mb-1">Posso mudar de plano a qualquer momento?</h4>
+            <p className="text-sm text-gray-600">
+              Sim! Voce pode fazer upgrade ou downgrade do seu plano a qualquer momento.
+              No upgrade, o valor e calculado proporcionalmente. No downgrade, o credito e aplicado no proximo ciclo.
+            </p>
           </div>
         </div>
       </div>

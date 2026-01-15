@@ -26,7 +26,7 @@ export const enrollRequestSchema = z.object({
 export type EnrollRequest = z.infer<typeof enrollRequestSchema>;
 
 export interface EnrollResponse {
-  status: 'pending' | 'approved' | 'blocked' | 'standby' | 'active';
+  status: 'pending' | 'approved' | 'blocked' | 'rejected' | 'standby' | 'active';
   message: string;
   device_internal_id?: number;
   agent_token?: string;

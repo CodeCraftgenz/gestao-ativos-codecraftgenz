@@ -1,5 +1,5 @@
 import api from './api';
-import type { Device, ApiResponse, PaginatedResponse, DashboardStats, PreRegisteredDevice, RealTimeData } from '../types';
+import type { Device, ApiResponse, PaginatedResponse, DashboardStats, DashboardAnalytics, PreRegisteredDevice, RealTimeData } from '../types';
 
 export interface DeviceFilters {
   status?: string;
@@ -92,6 +92,14 @@ export const devicesService = {
     const response = await api.get<ApiResponse<DashboardStats>>('/api/admin/dashboard/stats');
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.error || 'Erro ao buscar estatísticas');
+    }
+    return response.data.data;
+  },
+
+  async getAnalytics(): Promise<DashboardAnalytics> {
+    const response = await api.get<ApiResponse<DashboardAnalytics>>('/api/admin/dashboard/analytics');
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Erro ao buscar analytics');
     }
     return response.data.data;
   },

@@ -1754,3 +1754,135 @@ tbody tr:last-child td {
 .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
 .opacity-60 { opacity: 0.6; }
+
+/* ============================================================================
+   Dashboard Charts & Activity
+   ============================================================================ */
+.chart-container {
+  height: 280px;
+}
+
+.chart-container-sm {
+  height: 200px;
+}
+
+.activity-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  transition: all var(--transition);
+}
+
+.activity-item:hover {
+  background: var(--gray-100);
+}
+
+.activity-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--gray-600);
+}
+
+.activity-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-item-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-900);
+}
+
+.activity-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 0.125rem;
+}
+
+.activity-item-time {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+/* Progress Bar (Plan Usage) */
+.progress-bar {
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition);
+}
+
+.progress-bar-fill.bg-success { background: var(--success-500); }
+.progress-bar-fill.bg-warning { background: var(--warning-500); }
+.progress-bar-fill.bg-danger { background: var(--danger-500); }
+
+/* Quick Action Icon Variants */
+.quick-action-icon.green {
+  background: var(--success-100);
+  color: var(--success-600);
+}
+
+/* Badge Primary */
+.badge-primary {
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.badge-secondary {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* Page Header Actions */
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Space utilities */
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.mr-2 { margin-right: 0.5rem; }
+
+/* Hover underline */
+.hover\:underline:hover { text-decoration: underline; }
+
+/* Text utilities */
+.text-xs { font-size: 0.75rem; }
+.underline { text-decoration: underline; }
+.inline { display: inline; }
