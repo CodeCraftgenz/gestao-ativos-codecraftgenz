@@ -216,8 +216,9 @@ export function Privacy() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="form-group">
-              <label className="form-label">Retencao de Heartbeats (dias)</label>
+              <label htmlFor="heartbeat_retention" className="form-label">Retencao de Heartbeats (dias)</label>
               <input
+                id="heartbeat_retention"
                 type="number"
                 min="7"
                 max="365"
@@ -231,8 +232,9 @@ export function Privacy() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Retencao de Eventos de Atividade (dias)</label>
+              <label htmlFor="activity_retention" className="form-label">Retencao de Eventos de Atividade (dias)</label>
               <input
+                id="activity_retention"
                 type="number"
                 min="30"
                 max="730"
@@ -246,8 +248,9 @@ export function Privacy() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Anonimizar IPs apos (dias)</label>
+              <label htmlFor="ip_anonymize" className="form-label">Anonimizar IPs apos (dias)</label>
               <input
+                id="ip_anonymize"
                 type="number"
                 min="30"
                 max="365"
@@ -261,8 +264,9 @@ export function Privacy() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Anonimizar usuarios apos (dias)</label>
+              <label htmlFor="user_anonymize" className="form-label">Anonimizar usuarios apos (dias)</label>
               <input
+                id="user_anonymize"
                 type="number"
                 min="90"
                 max="1095"
