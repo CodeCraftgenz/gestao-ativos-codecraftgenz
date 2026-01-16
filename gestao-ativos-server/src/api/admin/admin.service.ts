@@ -80,7 +80,7 @@ export async function getDevices(filters: DeviceFilters) {
   const safeOffset = Math.max(0, Number(offset) || 0);
 
   const devices = await query<Device>(
-    `SELECT d.*, f.descricao as filial_nome
+    `SELECT d.*, f.name as filial_nome
      FROM devices d
      LEFT JOIN filiais f ON d.filial_id = f.id
      WHERE ${whereClause}
@@ -113,7 +113,7 @@ export async function getDeviceById(id: number): Promise<Device & {
   software?: unknown[];
 }> {
   const device = await queryOne<Device>(
-    `SELECT d.*, f.descricao as filial_nome
+    `SELECT d.*, f.name as filial_nome
      FROM devices d
      LEFT JOIN filiais f ON d.filial_id = f.id
      WHERE d.id = ?`,
@@ -214,7 +214,7 @@ export async function sendCommand(
 // Busca dispositivo por Service Tag (serial_bios)
 export async function getDeviceByServiceTag(serviceTag: string): Promise<Device | null> {
   const device = await queryOne<Device>(
-    `SELECT d.*, f.descricao as filial_nome
+    `SELECT d.*, f.name as filial_nome
      FROM devices d
      LEFT JOIN filiais f ON d.filial_id = f.id
      WHERE d.serial_bios = ?`,
@@ -271,7 +271,7 @@ export async function registerByServiceTag(
 // Lista dispositivos pre-registrados
 export async function getPreRegisteredDevices(): Promise<PreRegisteredDevice[]> {
   return query<PreRegisteredDevice>(
-    `SELECT pr.*, u.email as registered_by_email, f.descricao as filial_nome
+    `SELECT pr.*, u.email as registered_by_email, f.name as filial_nome
      FROM pre_registered_devices pr
      LEFT JOIN users u ON pr.registered_by = u.id
      LEFT JOIN filiais f ON pr.filial_id = f.id
