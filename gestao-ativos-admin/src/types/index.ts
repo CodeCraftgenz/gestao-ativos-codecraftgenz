@@ -169,6 +169,51 @@ export interface PlanUsage {
   near_limit: boolean;
 }
 
+// Planos
+export interface Plan {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  max_devices: number;
+  max_users: number;
+  max_filiais: number;
+  feature_alerts: boolean;
+  feature_reports: boolean;
+  feature_geoip: boolean;
+  feature_api_access: boolean;
+  data_retention_days: number;
+  price_monthly_cents: number;
+  price_yearly_cents: number;
+  is_active: boolean;
+  is_default: boolean;
+}
+
+// Subscription
+export interface Subscription {
+  id: number;
+  user_id: number;
+  plan_id: number;
+  status: 'active' | 'canceled' | 'expired' | 'trial';
+  started_at: string;
+  expires_at: string | null;
+  canceled_at: string | null;
+  trial_ends_at: string | null;
+  external_subscription_id: string | null;
+  plan?: Plan;
+}
+
+// Register Response
+export interface RegisterResponse {
+  access_token: string;
+  refresh_token: string;
+  user: User;
+  subscription: {
+    plan_name: string;
+    status: string;
+  };
+}
+
 export interface DashboardAnalytics {
   stats: DashboardStats;
   hourly_activity: HourlyActivity[];

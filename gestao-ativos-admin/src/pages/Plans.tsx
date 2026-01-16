@@ -1,36 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Zap, Building2, CreditCard, TrendingUp, Shield, Crown, Star } from 'lucide-react';
+import { plansService } from '../services/plans.service';
+import type { Plan, Subscription } from '../types';
 
-interface Plan {
-  id: number;
-  name: string;
-  slug: string;
-  description: string;
-  max_devices: number;
-  max_users: number;
-  max_filiais: number;
-  feature_alerts: boolean;
-  feature_reports: boolean;
-  feature_geoip: boolean;
-  feature_api_access: boolean;
-  feature_priority_support: boolean;
-  feature_custom_branding: boolean;
-  data_retention_days: number;
-  price_monthly_cents: number;
-  price_yearly_cents: number;
-  is_active: boolean;
-  is_default: boolean;
+// Estende Plan com campos opcionais do frontend
+interface PlanUI extends Plan {
   highlight?: boolean;
-}
-
-interface Subscription {
-  id: number;
-  plan_id: number;
-  plan_name: string;
-  status: 'active' | 'canceled' | 'expired' | 'trial';
-  started_at: string;
-  expires_at: string | null;
-  trial_ends_at: string | null;
+  feature_priority_support?: boolean;
+  feature_custom_branding?: boolean;
 }
 
 interface UsageStats {
@@ -54,11 +31,12 @@ const planColors: Record<string, string> = {
 };
 
 export function Plans() {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<PlanUI[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageStats>({ devices_count: 0, users_count: 0, filiais_count: 0 });
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [upgrading, setUpgrading] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -68,102 +46,24 @@ export function Plans() {
     try {
       setLoading(true);
 
-      // Planos do Patio de Controle
-      setPlans([
-        {
-          id: 1,
-          name: 'Gratuito',
-          slug: 'gratuito',
-          description: 'Para testar e pequenos projetos',
-          max_devices: 5,
-          max_users: 1,
-          max_filiais: 1,
-          feature_alerts: false,
-          feature_reports: false,
-          feature_geoip: false,
-          feature_api_access: false,
-          feature_priority_support: false,
-          feature_custom_branding: false,
-          data_retention_days: 30,
-          price_monthly_cents: 0,
-          price_yearly_cents: 0,
-          is_active: true,
-          is_default: true,
-        },
-        {
-          id: 2,
-          name: 'Basico',
-          slug: 'basico',
-          description: 'Ideal para pequenas empresas',
-          max_devices: 25,
-          max_users: 3,
-          max_filiais: 2,
-          feature_alerts: true,
-          feature_reports: false,
-          feature_geoip: false,
-          feature_api_access: false,
-          feature_priority_support: false,
-          feature_custom_branding: false,
-          data_retention_days: 90,
-          price_monthly_cents: 4900,
-          price_yearly_cents: 47000,
-          is_active: true,
-          is_default: false,
-        },
-        {
-          id: 3,
-          name: 'Profissional',
-          slug: 'profissional',
-          description: 'Para empresas em crescimento',
-          max_devices: 100,
-          max_users: 10,
-          max_filiais: 10,
-          feature_alerts: true,
-          feature_reports: true,
-          feature_geoip: true,
-          feature_api_access: false,
-          feature_priority_support: true,
-          feature_custom_branding: false,
-          data_retention_days: 180,
-          price_monthly_cents: 14900,
-          price_yearly_cents: 143000,
-          is_active: true,
-          is_default: false,
-          highlight: true,
-        },
-        {
-          id: 4,
-          name: 'Empresarial',
-          slug: 'empresarial',
-          description: 'Solucao completa para grandes organizacoes',
-          max_devices: 999999,
-          max_users: 999,
-          max_filiais: 999,
-          feature_alerts: true,
-          feature_reports: true,
-          feature_geoip: true,
-          feature_api_access: true,
-          feature_priority_support: true,
-          feature_custom_branding: true,
-          data_retention_days: 365,
-          price_monthly_cents: 39900,
-          price_yearly_cents: 383000,
-          is_active: true,
-          is_default: false,
-        },
-      ]);
+      // Busca planos da API
+      const plansData = await plansService.getPlans();
 
-      // Admin tem plano Empresarial com todos os recursos
-      setSubscription({
-        id: 1,
-        plan_id: 4,
-        plan_name: 'Empresarial',
-        status: 'active',
-        started_at: new Date().toISOString(),
-        expires_at: null,
-        trial_ends_at: null,
-      });
+      // Adiciona campos extras do frontend (highlight para profissional)
+      const plansWithUI: PlanUI[] = plansData.map(plan => ({
+        ...plan,
+        highlight: plan.slug === 'profissional',
+        feature_priority_support: plan.slug === 'profissional' || plan.slug === 'empresarial',
+        feature_custom_branding: plan.slug === 'empresarial',
+      }));
 
+      setPlans(plansWithUI);
+
+      // Busca subscription do usuario
+      const subscriptionData = await plansService.getSubscription();
+      setSubscription(subscriptionData);
+
+      // TODO: Buscar usage real do dashboard/analytics
       setUsage({
         devices_count: 3,
         users_count: 1,
@@ -173,6 +73,20 @@ export function Plans() {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUpgrade(planId: number) {
+    try {
+      setUpgrading(planId);
+      const newSubscription = await plansService.updatePlan(planId);
+      setSubscription(newSubscription);
+      alert('Plano atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar plano:', error);
+      alert('Erro ao atualizar plano. Tente novamente.');
+    } finally {
+      setUpgrading(null);
     }
   }
 
@@ -514,10 +428,17 @@ export function Plans() {
                   <button
                     type="button"
                     className={`btn w-full ${isCurrentPlan ? 'btn-secondary' : plan.highlight ? 'btn-primary' : 'btn-secondary'}`}
-                    disabled={isCurrentPlan}
+                    disabled={isCurrentPlan || upgrading === plan.id}
+                    onClick={() => !isCurrentPlan && handleUpgrade(plan.id)}
                     style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}
                   >
-                    {isCurrentPlan ? 'Plano Atual' : plan.price_monthly_cents === 0 ? 'Comecar Gratis' : 'Assinar Agora'}
+                    {upgrading === plan.id
+                      ? 'Processando...'
+                      : isCurrentPlan
+                        ? 'Plano Atual'
+                        : plan.price_monthly_cents === 0
+                          ? 'Comecar Gratis'
+                          : 'Assinar Agora'}
                   </button>
                 </div>
               </div>

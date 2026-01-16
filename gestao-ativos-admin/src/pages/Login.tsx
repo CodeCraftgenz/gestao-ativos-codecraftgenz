@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Cpu, AlertCircle, Mail, Lock } from 'lucide-react';
 
@@ -112,7 +112,10 @@ export function Login() {
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            CodeCraft GenZ - Sistema de Gestão de Ativos TI
+            Nao tem uma conta?{' '}
+            <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-medium">
+              Criar conta gratis
+            </Link>
           </p>
         </div>
       </div>
