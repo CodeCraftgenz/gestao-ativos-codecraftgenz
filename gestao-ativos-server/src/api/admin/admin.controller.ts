@@ -176,3 +176,74 @@ export async function executeLGPDCleanup(req: AuthenticatedRequest, res: Respons
     next(error);
   }
 }
+
+// ============================================================================
+// PLANOS E SUBSCRIPTIONS
+// ============================================================================
+
+// Lista todos os planos ativos
+export async function getPlans(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const plans = await adminService.getPlans();
+    res.json({ success: true, data: plans });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Busca plano por ID
+export async function getPlanById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(req.params.id);
+    const plan = await adminService.getPlanById(id);
+    res.json({ success: true, data: plan });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Busca subscription do usuario logado
+export async function getMySubscription(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const subscription = await adminService.getUserSubscription(userId);
+    res.json({ success: true, data: subscription });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Atualiza plano do usuario (upgrade/downgrade)
+export async function updateMyPlan(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const { plan_id } = req.body;
+
+    if (!plan_id) {
+      return res.status(400).json({ success: false, error: 'ID do plano e obrigatorio' });
+    }
+
+    await adminService.updateUserPlan(userId, plan_id);
+    const subscription = await adminService.getUserSubscription(userId);
+    res.json({ success: true, data: subscription, message: 'Plano atualizado com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Cancela subscription do usuario
+export async function cancelMySubscription(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const subscription = await adminService.getUserSubscription(userId);
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, error: 'Nenhuma subscription encontrada' });
+    }
+
+    await adminService.cancelSubscription(subscription.id);
+    res.json({ success: true, message: 'Subscription cancelada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+}

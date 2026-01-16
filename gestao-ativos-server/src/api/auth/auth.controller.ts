@@ -5,8 +5,9 @@ import {
   loginRequestSchema,
   refreshTokenRequestSchema,
   changePasswordRequestSchema,
+  registerRequestSchema,
 } from './auth.dto.js';
-import { login, refreshToken, changePassword, getCurrentUser } from './auth.service.js';
+import { login, refreshToken, changePassword, getCurrentUser, register } from './auth.service.js';
 
 /**
  * POST /api/auth/login
@@ -141,6 +142,35 @@ export async function meController(
     res.json({
       success: true,
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/auth/register
+ * Registra um novo usuario com plano
+ */
+export async function registerController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const parseResult = registerRequestSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw new ValidationError('Dados de registro invalidos', errors);
+    }
+
+    const result = await register(parseResult.data);
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: 'Usuario registrado com sucesso',
     });
   } catch (error) {
     next(error);

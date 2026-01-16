@@ -27,4 +27,11 @@ router.post('/devices/register-by-service-tag', adminController.registerByServic
 router.get('/lgpd/status', adminController.getLGPDCleanupStatus);
 router.post('/lgpd/cleanup', adminController.executeLGPDCleanup);
 
+// Planos e Subscriptions
+router.get('/plans', adminController.getPlans);
+router.get('/plans/:id', adminController.getPlanById);
+router.get('/subscription', adminController.getMySubscription);
+router.put('/subscription', adminController.updateMyPlan);
+router.delete('/subscription', adminController.cancelMySubscription);
+
 export default router;

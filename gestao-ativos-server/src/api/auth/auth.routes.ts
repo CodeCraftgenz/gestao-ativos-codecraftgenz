@@ -7,6 +7,7 @@ import {
   logoutController,
   changePasswordController,
   meController,
+  registerController,
 } from './auth.controller.js';
 
 const router = Router();
@@ -17,6 +18,9 @@ const router = Router();
 
 // POST /api/auth/login - Login
 router.post('/login', loginRateLimiter, loginController);
+
+// POST /api/auth/register - Registro de novo usuario
+router.post('/register', adminRateLimiter, registerController);
 
 // POST /api/auth/refresh - Renovar token
 router.post('/refresh', adminRateLimiter, refreshTokenController);

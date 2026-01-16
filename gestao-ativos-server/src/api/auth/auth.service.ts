@@ -1,4 +1,4 @@
-import { queryOne, execute } from '../../config/database.js';
+import { queryOne, execute, insert } from '../../config/database.js';
 import { logger } from '../../config/logger.js';
 import { hashPassword, verifyPassword } from '../../utils/hash.util.js';
 import {
@@ -7,8 +7,9 @@ import {
   verifyAdminRefreshToken,
 } from '../../utils/token.util.js';
 import { User, UserRole } from '../../types/index.js';
-import { UnauthorizedError, ValidationError } from '../../middleware/error.middleware.js';
-import { LoginRequest, LoginResponse, RefreshTokenResponse, ChangePasswordRequest } from './auth.dto.js';
+import { UnauthorizedError, ValidationError, AppError } from '../../middleware/error.middleware.js';
+import { LoginRequest, LoginResponse, RefreshTokenResponse, ChangePasswordRequest, RegisterRequest, RegisterResponse } from './auth.dto.js';
+import * as adminService from '../admin/admin.service.js';
 
 interface UserRow {
   id: number;
@@ -150,4 +151,84 @@ export async function getCurrentUser(userId: number): Promise<Omit<UserRow, 'pas
   );
 
   return user;
+}
+
+// =============================================================================
+// REGISTER
+// =============================================================================
+
+export async function register(data: RegisterRequest): Promise<RegisterResponse> {
+  // Verifica se email ja existe
+  const existingUser = await queryOne<{ id: number }>(
+    `SELECT id FROM users WHERE email = ?`,
+    [data.email]
+  );
+
+  if (existingUser) {
+    throw new AppError(409, 'Este email ja esta cadastrado');
+  }
+
+  // Hash da senha
+  const passwordHash = await hashPassword(data.password);
+
+  // Cria usuario
+  const userId = await insert(
+    `INSERT INTO users (email, password_hash, name, role, is_active) VALUES (?, ?, ?, 'user', TRUE)`,
+    [data.email, passwordHash, data.name]
+  );
+
+  // Busca plano solicitado ou usa o gratuito
+  let planId: number;
+  let planName: string;
+  let subscriptionStatus: 'active' | 'trial' = 'active';
+
+  if (data.plan_slug && data.plan_slug !== 'gratuito') {
+    try {
+      const plan = await adminService.getPlanBySlug(data.plan_slug);
+      planId = plan.id;
+      planName = plan.name;
+      subscriptionStatus = plan.price_monthly_cents > 0 ? 'trial' : 'active';
+    } catch {
+      // Se plano nao existir, usa gratuito
+      const freePlan = await queryOne<{ id: number; name: string }>(
+        `SELECT id, name FROM plans WHERE is_default = TRUE OR slug = 'gratuito' LIMIT 1`
+      );
+      planId = freePlan?.id || 1;
+      planName = freePlan?.name || 'Gratuito';
+    }
+  } else {
+    // Plano gratuito
+    const freePlan = await queryOne<{ id: number; name: string }>(
+      `SELECT id, name FROM plans WHERE is_default = TRUE OR slug = 'gratuito' LIMIT 1`
+    );
+    planId = freePlan?.id || 1;
+    planName = freePlan?.name || 'Gratuito';
+  }
+
+  // Cria subscription
+  await adminService.createSubscription(userId, planId, subscriptionStatus);
+
+  // Define role como string para compatibilidade com banco
+  const userRole = 'user' as UserRole;
+
+  // Gera tokens
+  const accessToken = generateAdminAccessToken(userId, data.email, data.name, userRole);
+  const refreshToken = generateAdminRefreshToken(userId, data.email, data.name, userRole);
+
+  logger.info('Usuario registrado com sucesso', { userId, email: data.email, plan: planName });
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    user: {
+      id: userId,
+      email: data.email,
+      name: data.name,
+      role: userRole,
+    },
+    subscription: {
+      plan_name: planName,
+      status: subscriptionStatus,
+    },
+  };
 }

@@ -53,3 +53,36 @@ export const changePasswordRequestSchema = z.object({
 });
 
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
+
+// =============================================================================
+// REGISTER
+// =============================================================================
+
+export const registerRequestSchema = z.object({
+  email: z.string().email('Email invalido'),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter no minimo 8 caracteres')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiuscula')
+    .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minuscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um numero'),
+  name: z.string().min(2, 'Nome deve ter no minimo 2 caracteres'),
+  plan_slug: z.string().optional(), // slug do plano escolhido (gratuito, basico, profissional, empresarial)
+});
+
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export interface RegisterResponse {
+  access_token: string;
+  refresh_token: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    role: UserRole;
+  };
+  subscription: {
+    plan_name: string;
+    status: string;
+  };
+}

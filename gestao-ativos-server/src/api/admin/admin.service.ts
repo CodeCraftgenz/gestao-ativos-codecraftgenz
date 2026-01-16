@@ -491,3 +491,257 @@ export async function getDashboardAnalytics(userId: number): Promise<DashboardAn
   };
 }
 
+// ============================================================================
+// PLANOS E SUBSCRIPTIONS
+// ============================================================================
+
+export interface Plan {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  max_devices: number;
+  max_users: number;
+  max_filiais: number;
+  feature_alerts: boolean;
+  feature_reports: boolean;
+  feature_geoip: boolean;
+  feature_api_access: boolean;
+  data_retention_days: number;
+  price_monthly_cents: number;
+  price_yearly_cents: number;
+  is_active: boolean;
+  is_default: boolean;
+}
+
+export interface Subscription {
+  id: number;
+  user_id: number;
+  plan_id: number;
+  status: 'active' | 'canceled' | 'expired' | 'trial';
+  started_at: Date;
+  expires_at: Date | null;
+  canceled_at: Date | null;
+  trial_ends_at: Date | null;
+  external_subscription_id: string | null;
+  plan?: Plan;
+}
+
+/**
+ * Lista todos os planos ativos
+ */
+export async function getPlans(): Promise<Plan[]> {
+  const plans = await query<Plan>(`
+    SELECT
+      id, name, slug, description,
+      max_devices, max_users, max_filiais,
+      feature_alerts, feature_reports, feature_geoip, feature_api_access,
+      data_retention_days, price_monthly_cents, price_yearly_cents,
+      is_active, is_default
+    FROM plans
+    WHERE is_active = TRUE
+    ORDER BY price_monthly_cents ASC
+  `);
+  return plans;
+}
+
+/**
+ * Busca plano por ID
+ */
+export async function getPlanById(id: number): Promise<Plan> {
+  const plan = await queryOne<Plan>(`
+    SELECT
+      id, name, slug, description,
+      max_devices, max_users, max_filiais,
+      feature_alerts, feature_reports, feature_geoip, feature_api_access,
+      data_retention_days, price_monthly_cents, price_yearly_cents,
+      is_active, is_default
+    FROM plans
+    WHERE id = ?
+  `, [id]);
+
+  if (!plan) {
+    throw new AppError(404, 'Plano nao encontrado');
+  }
+  return plan;
+}
+
+/**
+ * Busca plano por slug
+ */
+export async function getPlanBySlug(slug: string): Promise<Plan> {
+  const plan = await queryOne<Plan>(`
+    SELECT
+      id, name, slug, description,
+      max_devices, max_users, max_filiais,
+      feature_alerts, feature_reports, feature_geoip, feature_api_access,
+      data_retention_days, price_monthly_cents, price_yearly_cents,
+      is_active, is_default
+    FROM plans
+    WHERE slug = ? AND is_active = TRUE
+  `, [slug]);
+
+  if (!plan) {
+    throw new AppError(404, 'Plano nao encontrado');
+  }
+  return plan;
+}
+
+/**
+ * Busca subscription do usuario
+ */
+export async function getUserSubscription(userId: number): Promise<Subscription | null> {
+  const subscription = await queryOne<Subscription & {
+    plan_name: string;
+    plan_slug: string;
+    plan_max_devices: number;
+    plan_max_users: number;
+    plan_max_filiais: number;
+    plan_feature_alerts: boolean;
+    plan_feature_reports: boolean;
+    plan_feature_geoip: boolean;
+    plan_feature_api_access: boolean;
+    plan_data_retention_days: number;
+    plan_price_monthly_cents: number;
+  }>(`
+    SELECT
+      s.id, s.user_id, s.plan_id, s.status,
+      s.started_at, s.expires_at, s.canceled_at, s.trial_ends_at,
+      s.external_subscription_id,
+      p.name as plan_name, p.slug as plan_slug,
+      p.max_devices as plan_max_devices,
+      p.max_users as plan_max_users,
+      p.max_filiais as plan_max_filiais,
+      p.feature_alerts as plan_feature_alerts,
+      p.feature_reports as plan_feature_reports,
+      p.feature_geoip as plan_feature_geoip,
+      p.feature_api_access as plan_feature_api_access,
+      p.data_retention_days as plan_data_retention_days,
+      p.price_monthly_cents as plan_price_monthly_cents
+    FROM subscriptions s
+    INNER JOIN plans p ON s.plan_id = p.id
+    WHERE s.user_id = ?
+    ORDER BY s.id DESC
+    LIMIT 1
+  `, [userId]);
+
+  if (!subscription) {
+    return null;
+  }
+
+  return {
+    ...subscription,
+    plan: {
+      id: subscription.plan_id,
+      name: subscription.plan_name,
+      slug: subscription.plan_slug,
+      description: null,
+      max_devices: subscription.plan_max_devices,
+      max_users: subscription.plan_max_users,
+      max_filiais: subscription.plan_max_filiais,
+      feature_alerts: subscription.plan_feature_alerts,
+      feature_reports: subscription.plan_feature_reports,
+      feature_geoip: subscription.plan_feature_geoip,
+      feature_api_access: subscription.plan_feature_api_access,
+      data_retention_days: subscription.plan_data_retention_days,
+      price_monthly_cents: subscription.plan_price_monthly_cents,
+      price_yearly_cents: 0,
+      is_active: true,
+      is_default: false,
+    }
+  };
+}
+
+/**
+ * Cria subscription para usuario (usado no registro ou upgrade)
+ */
+export async function createSubscription(
+  userId: number,
+  planId: number,
+  status: 'active' | 'trial' = 'trial'
+): Promise<number> {
+  // Verifica se plano existe
+  const plan = await getPlanById(planId);
+
+  // Cancela subscription anterior se houver
+  await execute(`
+    UPDATE subscriptions
+    SET status = 'canceled', canceled_at = NOW()
+    WHERE user_id = ? AND status IN ('active', 'trial')
+  `, [userId]);
+
+  // Cria nova subscription
+  const trialDays = plan.price_monthly_cents === 0 ? null : 14; // 14 dias trial para planos pagos
+
+  const id = await insert(`
+    INSERT INTO subscriptions (user_id, plan_id, status, started_at, trial_ends_at)
+    VALUES (?, ?, ?, NOW(), ${trialDays ? 'DATE_ADD(NOW(), INTERVAL ? DAY)' : 'NULL'})
+  `, trialDays ? [userId, planId, status, trialDays] : [userId, planId, status]);
+
+  return id;
+}
+
+/**
+ * Ativa subscription apos pagamento
+ */
+export async function activateSubscription(
+  subscriptionId: number,
+  externalId?: string
+): Promise<void> {
+  await execute(`
+    UPDATE subscriptions
+    SET status = 'active',
+        trial_ends_at = NULL,
+        external_subscription_id = ?
+    WHERE id = ?
+  `, [externalId || null, subscriptionId]);
+}
+
+/**
+ * Cancela subscription
+ */
+export async function cancelSubscription(subscriptionId: number): Promise<void> {
+  await execute(`
+    UPDATE subscriptions
+    SET status = 'canceled', canceled_at = NOW()
+    WHERE id = ?
+  `, [subscriptionId]);
+}
+
+/**
+ * Atualiza plano do usuario (upgrade/downgrade)
+ */
+export async function updateUserPlan(userId: number, newPlanId: number): Promise<void> {
+  const plan = await getPlanById(newPlanId);
+  const subscription = await getUserSubscription(userId);
+
+  if (subscription) {
+    // Atualiza plano existente
+    await execute(`
+      UPDATE subscriptions
+      SET plan_id = ?, updated_at = NOW()
+      WHERE id = ?
+    `, [newPlanId, subscription.id]);
+  } else {
+    // Cria nova subscription
+    await createSubscription(userId, newPlanId, plan.price_monthly_cents === 0 ? 'active' : 'trial');
+  }
+}
+
+/**
+ * Cria subscription gratuita para novo usuario
+ */
+export async function createFreeSubscription(userId: number): Promise<void> {
+  // Busca plano gratuito (is_default = true ou price = 0)
+  const freePlan = await queryOne<{ id: number }>(`
+    SELECT id FROM plans
+    WHERE is_default = TRUE OR price_monthly_cents = 0
+    ORDER BY is_default DESC
+    LIMIT 1
+  `);
+
+  if (freePlan) {
+    await createSubscription(userId, freePlan.id, 'active');
+  }
+}
+
