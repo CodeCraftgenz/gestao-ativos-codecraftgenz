@@ -165,15 +165,15 @@ export async function approveDevice(id: number, userId: number): Promise<void> {
   }
 
   await execute(
-    `UPDATE devices SET status = 'approved', approved_at = NOW(), approved_by = ? WHERE id = ?`,
-    [userId, id]
+    `UPDATE devices SET status = 'approved', approved_at = NOW() WHERE id = ?`,
+    [id]
   );
 }
 
 export async function blockDevice(id: number, userId: number, reason: string): Promise<void> {
   await execute(
-    `UPDATE devices SET status = 'blocked', blocked_at = NOW(), blocked_by = ?, block_reason = ? WHERE id = ?`,
-    [userId, reason, id]
+    `UPDATE devices SET status = 'blocked' WHERE id = ?`,
+    [id]
   );
 }
 
@@ -185,7 +185,7 @@ export async function unblockDevice(id: number): Promise<void> {
   }
 
   await execute(
-    `UPDATE devices SET status = 'offline', blocked_at = NULL, blocked_by = NULL, block_reason = NULL WHERE id = ?`,
+    `UPDATE devices SET status = 'approved' WHERE id = ?`,
     [id]
   );
 }
