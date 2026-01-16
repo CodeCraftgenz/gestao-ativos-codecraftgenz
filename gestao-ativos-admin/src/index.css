@@ -147,7 +147,7 @@ a {
 .sidebar {
   background: var(--sidebar-bg);
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
   position: fixed;
   left: 0;
   top: 0;
@@ -155,6 +155,7 @@ a {
   display: flex;
   flex-direction: column;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -306,7 +307,7 @@ a {
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .sidebar-user {
