@@ -4,6 +4,7 @@ import { extractBearerToken, verifyAgentToken } from '../utils/token.util.js';
 import { UnauthorizedError, DeviceBlockedError } from './error.middleware.js';
 import { query, execute } from '../config/database.js';
 import { hashAgentToken } from '../utils/hash.util.js';
+import { logger } from '../config/logger.js';
 
 interface DeviceRow {
   id: number;
@@ -36,6 +37,13 @@ export async function agentAuthMiddleware(
     // Verifica se o token nao foi revogado e se o device existe
     const tokenHash = hashAgentToken(token);
 
+    // Debug: Log para investigar problema de autenticação
+    logger.debug('Agent auth attempt', {
+      deviceInternalId: payload.sub,
+      deviceId: payload.device_id,
+      tokenHashPrefix: tokenHash.substring(0, 16) + '...',
+    });
+
     const devices = await query<DeviceRow>(
       `SELECT d.id, d.device_id, d.hostname, d.status, d.block_reason
        FROM devices d
@@ -48,6 +56,20 @@ export async function agentAuthMiddleware(
     );
 
     if (devices.length === 0) {
+      // Debug: Verificar se existe credencial para este device
+      const existingCreds = await query<{ agent_token_hash: string; revoked_at: string | null }>(
+        `SELECT agent_token_hash, revoked_at FROM device_credentials WHERE device_id = ? ORDER BY id DESC LIMIT 3`,
+        [payload.sub]
+      );
+      logger.warn('Agent auth failed - no matching credentials', {
+        deviceInternalId: payload.sub,
+        deviceId: payload.device_id,
+        tokenHashPrefix: tokenHash.substring(0, 16) + '...',
+        existingCreds: existingCreds.map(c => ({
+          hashPrefix: c.agent_token_hash.substring(0, 16) + '...',
+          revoked: c.revoked_at !== null,
+        })),
+      });
       throw new UnauthorizedError('Token revogado ou dispositivo nao encontrado', 'REVOKED_TOKEN');
     }
 

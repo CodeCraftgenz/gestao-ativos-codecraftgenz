@@ -276,6 +276,16 @@ async function generateAndSaveTokens(
   const accessToken = generateAgentAccessToken(deviceInternalId, deviceId, hostname);
   const refreshToken = generateAgentRefreshToken(deviceInternalId, deviceId, hostname);
 
+  const accessTokenHash = hashAgentToken(accessToken);
+  const refreshTokenHash = hashAgentToken(refreshToken);
+
+  // Debug: Log do hash que será salvo
+  logger.debug('Generating new tokens', {
+    deviceInternalId,
+    deviceId,
+    accessTokenHashPrefix: accessTokenHash.substring(0, 16) + '...',
+  });
+
   // Revoga tokens anteriores
   await execute(
     `UPDATE device_credentials SET revoked_at = NOW(), revoke_reason = 'New token issued' WHERE device_id = ? AND revoked_at IS NULL`,
@@ -285,8 +295,14 @@ async function generateAndSaveTokens(
   // Salva novo token
   await insert(
     `INSERT INTO device_credentials (device_id, agent_token_hash, refresh_token_hash) VALUES (?, ?, ?)`,
-    [deviceInternalId, hashAgentToken(accessToken), hashAgentToken(refreshToken)]
+    [deviceInternalId, accessTokenHash, refreshTokenHash]
   );
+
+  logger.info('New credentials saved', {
+    deviceInternalId,
+    deviceId,
+    accessTokenHashPrefix: accessTokenHash.substring(0, 16) + '...',
+  });
 
   return { accessToken, refreshToken };
 }
