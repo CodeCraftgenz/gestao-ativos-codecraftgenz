@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Zap, Building2, CreditCard, TrendingUp, Shield, Crown, Star } from 'lucide-react';
 import { plansService } from '../services/plans.service';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import type { Plan, Subscription } from '../types';
 
 // Estende Plan com campos opcionais do frontend
@@ -31,8 +32,9 @@ const planColors: Record<string, string> = {
 };
 
 export function Plans() {
+  const { subscription, updatePlan, refreshSubscription } = useSubscription();
   const [plans, setPlans] = useState<PlanUI[]>([]);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [localSubscription, setLocalSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageStats>({ devices_count: 0, users_count: 0, filiais_count: 0 });
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -41,6 +43,13 @@ export function Plans() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Sincroniza subscription local com contexto
+  useEffect(() => {
+    if (subscription) {
+      setLocalSubscription(subscription);
+    }
+  }, [subscription]);
 
   async function loadData() {
     try {
@@ -61,7 +70,7 @@ export function Plans() {
 
       // Busca subscription do usuario
       const subscriptionData = await plansService.getSubscription();
-      setSubscription(subscriptionData);
+      setLocalSubscription(subscriptionData);
 
       // TODO: Buscar usage real do dashboard/analytics
       setUsage({
@@ -79,9 +88,10 @@ export function Plans() {
   async function handleUpgrade(planId: number) {
     try {
       setUpgrading(planId);
-      const newSubscription = await plansService.updatePlan(planId);
-      setSubscription(newSubscription);
-      alert('Plano atualizado com sucesso!');
+      // Usa o contexto para fazer upgrade - isso vai disparar o modal automaticamente
+      await updatePlan(planId);
+      // Atualiza subscription local
+      await refreshSubscription();
     } catch (error) {
       console.error('Erro ao atualizar plano:', error);
       alert('Erro ao atualizar plano. Tente novamente.');
@@ -99,8 +109,8 @@ export function Plans() {
   }
 
   function getUsagePercent(): number {
-    if (!subscription) return 0;
-    const currentPlan = plans.find(p => p.id === subscription.plan_id);
+    if (!localSubscription) return 0;
+    const currentPlan = plans.find(p => p.id === localSubscription.plan_id);
     if (!currentPlan) return 0;
     return Math.min(100, (usage.devices_count / currentPlan.max_devices) * 100);
   }
@@ -137,7 +147,7 @@ export function Plans() {
     );
   }
 
-  const currentPlan = plans.find(p => p.id === subscription?.plan_id);
+  const currentPlan = plans.find(p => p.id === localSubscription?.plan_id);
   const usagePercent = getUsagePercent();
 
   return (
@@ -200,15 +210,15 @@ export function Plans() {
         <div className="card mb-6">
           <div className="card-header">
             <h2 className="card-title">Status da Assinatura</h2>
-            {getStatusBadge(subscription.status)}
+            {getStatusBadge(localSubscription!.status)}
           </div>
           <div className="card-body">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-lg font-semibold text-gray-900">Plano {currentPlan.name}</div>
-                {subscription.trial_ends_at && (
+                {localSubscription?.trial_ends_at && (
                   <div className="text-sm text-gray-500">
-                    Teste expira em {new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')}
+                    Teste expira em {new Date(localSubscription!.trial_ends_at!).toLocaleDateString('pt-BR')}
                   </div>
                 )}
               </div>

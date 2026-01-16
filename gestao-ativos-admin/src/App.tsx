@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { Layout } from './components/Layout';
 import { PrivateRoute } from './components/PrivateRoute';
 import { Login } from './pages/Login';
@@ -13,12 +14,16 @@ import { RegisterDevice } from './pages/RegisterDevice';
 import { Plans } from './pages/Plans';
 import { Privacy } from './pages/Privacy';
 import { Alerts } from './pages/Alerts';
+import { Reports } from './pages/Reports';
+import { GeoIP } from './pages/GeoIP';
+import { ApiAccess } from './pages/ApiAccess';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
+        <SubscriptionProvider>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route
@@ -35,12 +40,16 @@ function App() {
             <Route path="register" element={<RegisterDevice />} />
             <Route path="pending" element={<Pending />} />
             <Route path="alerts" element={<Alerts />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="geoip" element={<GeoIP />} />
+            <Route path="api" element={<ApiAccess />} />
             <Route path="plans" element={<Plans />} />
             <Route path="privacy" element={<Privacy />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </SubscriptionProvider>
       </AuthProvider>
     </BrowserRouter>
   );

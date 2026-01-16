@@ -1,5 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { UpgradeWelcomeModal } from './UpgradeWelcomeModal';
 import {
   LayoutDashboard,
   Monitor,
@@ -13,22 +15,22 @@ import {
   Bell,
   CreditCard,
   Shield,
+  FileBarChart,
+  MapPin,
+  Code,
+  Lock,
+  Crown,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
-const navigation = [
-  { name: 'Painel', href: '/', icon: LayoutDashboard },
-  { name: 'Dispositivos', href: '/devices', icon: Monitor },
-  { name: 'Registrar', href: '/register', icon: PlusCircle },
-  { name: 'Pendentes', href: '/pending', icon: Clock },
-  { name: 'Alertas', href: '/alerts', icon: Bell },
-];
-
-const settingsNav = [
-  { name: 'Planos', href: '/plans', icon: CreditCard },
-  { name: 'Privacidade', href: '/privacy', icon: Shield },
-  { name: 'Configuracoes', href: '/settings', icon: Settings },
-];
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  feature?: 'alerts' | 'reports' | 'geoip' | 'apiAccess';
+  badge?: string | number;
+  badgeColor?: string;
+}
 
 const pageNames: Record<string, string> = {
   '/': 'Dashboard',
@@ -36,6 +38,9 @@ const pageNames: Record<string, string> = {
   '/register': 'Registrar Dispositivo',
   '/pending': 'Pendentes',
   '/alerts': 'Alertas',
+  '/reports': 'Relatorios',
+  '/geoip': 'Localizacao',
+  '/api': 'API',
   '/plans': 'Planos',
   '/privacy': 'Privacidade LGPD',
   '/settings': 'Configuracoes',
@@ -43,6 +48,7 @@ const pageNames: Record<string, string> = {
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { plan, upgradeInfo, clearUpgradeInfo, hasFeature } = useSubscription();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,11 +58,112 @@ export function Layout() {
     navigate('/login');
   };
 
+  // Menu principal dinamico baseado nas features do plano
+  const navigation = useMemo((): NavItem[] => {
+    const items: NavItem[] = [
+      { name: 'Painel', href: '/', icon: LayoutDashboard },
+      { name: 'Dispositivos', href: '/devices', icon: Monitor },
+      { name: 'Registrar', href: '/register', icon: PlusCircle },
+      { name: 'Pendentes', href: '/pending', icon: Clock, badge: 0 },
+    ];
+
+    // Alertas - requer feature_alerts
+    items.push({
+      name: 'Alertas',
+      href: '/alerts',
+      icon: Bell,
+      feature: 'alerts',
+      badge: '!',
+      badgeColor: 'bg-red-500',
+    });
+
+    // Relatorios - requer feature_reports
+    items.push({
+      name: 'Relatorios',
+      href: '/reports',
+      icon: FileBarChart,
+      feature: 'reports',
+    });
+
+    // GeoIP/Localizacao - requer feature_geoip
+    items.push({
+      name: 'Localizacao',
+      href: '/geoip',
+      icon: MapPin,
+      feature: 'geoip',
+    });
+
+    // API - requer feature_api_access
+    items.push({
+      name: 'API',
+      href: '/api',
+      icon: Code,
+      feature: 'apiAccess',
+    });
+
+    return items;
+  }, []);
+
+  // Menu de configuracoes
+  const settingsNav: NavItem[] = [
+    { name: 'Planos', href: '/plans', icon: CreditCard },
+    { name: 'Privacidade', href: '/privacy', icon: Shield },
+    { name: 'Configuracoes', href: '/settings', icon: Settings },
+  ];
+
   const currentPage = pageNames[location.pathname] || 'Dashboard';
   const userInitials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'AD';
 
+  // Renderiza item de navegacao
+  const renderNavItem = (item: NavItem) => {
+    const isActive = location.pathname === item.href;
+    const isLocked = item.feature && !hasFeature(item.feature);
+
+    // Se esta bloqueado, mostra com cadeado
+    if (isLocked) {
+      return (
+        <Link
+          key={item.name}
+          to="/plans"
+          onClick={() => setSidebarOpen(false)}
+          className="sidebar-link locked"
+          title={`Disponivel nos planos superiores - Clique para fazer upgrade`}
+        >
+          <item.icon />
+          <span>{item.name}</span>
+          <Lock size={14} className="ml-auto text-gray-400" />
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        key={item.name}
+        to={item.href}
+        onClick={() => setSidebarOpen(false)}
+        className={`sidebar-link ${isActive ? 'active' : ''}`}
+      >
+        <item.icon />
+        <span>{item.name}</span>
+        {item.badge !== undefined && (
+          <span className={`sidebar-badge ${item.badgeColor || ''}`}>
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen">
+      {/* Modal de upgrade */}
+      {upgradeInfo && (
+        <UpgradeWelcomeModal
+          upgradeInfo={upgradeInfo}
+          onClose={clearUpgradeInfo}
+        />
+      )}
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -80,45 +187,23 @@ export function Layout() {
           </div>
         </div>
 
+        {/* Plan Badge */}
+        {plan && (
+          <div className="px-4 mb-2">
+            <div className={`plan-badge plan-badge-${plan.slug}`}>
+              <Crown size={14} />
+              <span>{plan.name}</span>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <nav className="sidebar-nav">
           <div className="sidebar-section-title">Menu Principal</div>
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`sidebar-link ${isActive ? 'active' : ''}`}
-              >
-                <item.icon />
-                <span>{item.name}</span>
-                {item.name === 'Pendentes' && (
-                  <span className="sidebar-badge">0</span>
-                )}
-                {item.name === 'Alertas' && (
-                  <span className="sidebar-badge bg-red-500">!</span>
-                )}
-              </Link>
-            );
-          })}
+          {navigation.map(renderNavItem)}
 
           <div className="sidebar-section-title mt-6">Configuracoes</div>
-          {settingsNav.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`sidebar-link ${isActive ? 'active' : ''}`}
-              >
-                <item.icon />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+          {settingsNav.map(renderNavItem)}
         </nav>
 
         {/* User Footer */}
@@ -162,7 +247,16 @@ export function Layout() {
             </div>
           </div>
           <div className="topbar-right">
-            <span className="topbar-email">{user?.email}</span>
+            <span className="topbar-email hidden sm:inline">{user?.email}</span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="topbar-logout-btn"
+              title="Sair do sistema"
+            >
+              <LogOut size={20} />
+              <span className="hidden md:inline">Sair</span>
+            </button>
           </div>
         </header>
 

@@ -425,7 +425,7 @@ async function getRecentActivity(): Promise<RecentActivity[]> {
  * Retorna uso do plano atual
  */
 async function getPlanUsage(userId: number): Promise<PlanUsage> {
-  // Busca plano do usuario - usando IFNULL para colunas que podem nao existir
+  // Busca plano do usuario - incluindo status 'active' e 'trial'
   const subscription = await queryOne<{
     plan_name: string;
     max_devices: number;
@@ -434,10 +434,10 @@ async function getPlanUsage(userId: number): Promise<PlanUsage> {
     SELECT
       COALESCE(p.name, 'Gratuito') as plan_name,
       COALESCE(p.max_devices, 5) as max_devices,
-      30 as data_retention_days
+      COALESCE(p.data_retention_days, 30) as data_retention_days
     FROM subscriptions s
     INNER JOIN plans p ON s.plan_id = p.id
-    WHERE s.user_id = ? AND s.status = 'active'
+    WHERE s.user_id = ? AND s.status IN ('active', 'trial')
     ORDER BY s.id DESC
     LIMIT 1
   `, [userId]);
