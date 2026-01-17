@@ -13,6 +13,7 @@ public class PatioWorker : BackgroundService
     private readonly LocalStorage _storage;
     private readonly EnrollmentService _enrollmentService;
     private readonly EventCollector _eventCollector;
+    private readonly InventoryCollector _inventoryCollector;
 
     // Intervalos
     private readonly TimeSpan _heartbeatInterval = TimeSpan.FromMinutes(5);
@@ -28,11 +29,13 @@ public class PatioWorker : BackgroundService
     public PatioWorker(
         LocalStorage storage,
         EnrollmentService enrollmentService,
-        EventCollector eventCollector)
+        EventCollector eventCollector,
+        InventoryCollector inventoryCollector)
     {
         _storage = storage;
         _enrollmentService = enrollmentService;
         _eventCollector = eventCollector;
+        _inventoryCollector = inventoryCollector;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -119,8 +122,11 @@ public class PatioWorker : BackgroundService
             Log.Information("Enrollment concluido com sucesso!");
             _consecutiveEnrollmentFailures = 0;
 
-            // Aguarda um pouco antes de enviar eventos para garantir que o token foi persistido
+            // Aguarda um pouco antes de enviar dados para garantir que o token foi persistido
             await Task.Delay(TimeSpan.FromSeconds(3), ct);
+
+            // Envia inventario imediatamente apos enrollment
+            await _inventoryCollector.CollectAndSendInventoryAsync();
 
             // Envia eventos pendentes
             await _eventCollector.CollectAndSendEventsAsync();
@@ -175,6 +181,17 @@ public class PatioWorker : BackgroundService
             if (now - lastEvent >= _eventCollectionInterval)
             {
                 await _eventCollector.CollectAndSendEventsAsync();
+            }
+        }
+
+        // Verifica se deve coletar inventario (apenas se ainda aprovado)
+        if (_storage.Config.Status == EnrollmentStatus.Approved)
+        {
+            var lastInventory = _storage.Config.LastInventoryAt ?? DateTime.MinValue;
+            var inventoryInterval = TimeSpan.FromMinutes(_storage.Config.InventoryIntervalMinutes);
+            if (now - lastInventory >= inventoryInterval)
+            {
+                await _inventoryCollector.CollectAndSendInventoryAsync();
             }
         }
 

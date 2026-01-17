@@ -12,6 +12,7 @@ import {
   Activity,
   CheckCircle,
 } from 'lucide-react';
+import api from '../services/api';
 
 interface LgpdSettings {
   heartbeat_retention_days: number;
@@ -104,8 +105,20 @@ export function Privacy() {
 
   async function exportData() {
     try {
-      // const response = await api.get('/admin/lgpd/export', { responseType: 'blob' });
-      alert('Exportacao de dados iniciada. O arquivo sera baixado em breve.');
+      const response = await api.get('/api/admin/lgpd/export', { responseType: 'blob' });
+
+      // Criar blob e fazer download
+      const blob = new Blob([response.data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `lgpd-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      alert('Exportacao de dados concluida com sucesso!');
     } catch (error) {
       console.error('Erro ao exportar:', error);
       alert('Erro ao exportar dados');

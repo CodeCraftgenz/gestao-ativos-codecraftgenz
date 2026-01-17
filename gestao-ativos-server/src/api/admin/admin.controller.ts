@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../types/index.js';
 import * as adminService from './admin.service.js';
-import { runLGPDCleanup, getLGPDStatus } from '../../jobs/lgpd-cleanup.job.js';
+import { runLGPDCleanup, getLGPDStatus, exportLGPDData } from '../../jobs/lgpd-cleanup.job.js';
 
 export async function getStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -172,6 +172,21 @@ export async function executeLGPDCleanup(req: AuthenticatedRequest, res: Respons
   try {
     const result = await runLGPDCleanup();
     res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// LGPD - Exportar dados para portabilidade
+export async function exportLGPDDataEndpoint(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const data = await exportLGPDData();
+
+    // Define headers para download de arquivo JSON
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="lgpd-export-${new Date().toISOString().split('T')[0]}.json"`);
+
+    res.json(data);
   } catch (error) {
     next(error);
   }

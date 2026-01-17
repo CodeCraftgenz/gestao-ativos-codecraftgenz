@@ -17,8 +17,8 @@ const DEFAULT_LGPD_CONFIG: LGPDConfig = {
   heartbeat_retention_days: 90,         // 3 meses
   snapshot_retention_days: 30,          // 1 mes
   activity_retention_days: 365,         // 1 ano
-  ip_anonymize_after_days: 180,         // 6 meses
-  user_anonymize_after_days: 730,       // 2 anos
+  ip_anonymize_after_days: 30,          // 1 mes (reduzido de 180)
+  user_anonymize_after_days: 90,        // 3 meses (reduzido de 730)
 };
 
 // =============================================================================
@@ -414,5 +414,90 @@ export async function getLGPDStatus(): Promise<{
       activity_events_total: activityTotal?.count ?? 0,
       activity_events_old: activityOld?.count ?? 0,
     },
+  };
+}
+
+// =============================================================================
+// EXPORTACAO DE DADOS LGPD (PORTABILIDADE)
+// =============================================================================
+
+export interface LGPDExportData {
+  exportedAt: string;
+  config: LGPDConfig;
+  devices: unknown[];
+  heartbeats: unknown[];
+  activityEvents: unknown[];
+  commands: unknown[];
+}
+
+/**
+ * Exporta todos os dados para portabilidade LGPD
+ * Retorna um objeto JSON com todos os dados coletados
+ */
+export async function exportLGPDData(): Promise<LGPDExportData> {
+  const config = await getLGPDConfig();
+
+  // Buscar todos os dispositivos
+  const devices = await query<unknown[]>(
+    `SELECT
+      d.id, d.device_id, d.hostname, d.service_tag,
+      d.status, d.filial_id, d.lgpd_consent, d.lgpd_consent_at,
+      d.created_at, d.updated_at,
+      dh.cpu_name, dh.cpu_cores, dh.cpu_threads, dh.ram_total_gb,
+      dh.gpu_name, dh.bios_version, dh.motherboard_manufacturer, dh.motherboard_product
+    FROM devices d
+    LEFT JOIN device_hardware dh ON d.id = dh.device_id`
+  );
+
+  // Buscar heartbeats (ultimos 90 dias por padrao)
+  const heartbeats = await query<unknown[]>(
+    `SELECT
+      device_id, ip_address, logged_user, os_version,
+      cpu_usage, memory_usage, uptime_seconds,
+      received_at
+    FROM device_heartbeats
+    WHERE received_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    ORDER BY received_at DESC`,
+    [config.heartbeat_retention_days]
+  );
+
+  // Buscar eventos de atividade
+  const activityEvents = await query<unknown[]>(
+    `SELECT
+      device_id, event_type, occurred_at, logged_user,
+      ip_address, session_id, duration_seconds, details,
+      received_at
+    FROM device_activity_events
+    WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    ORDER BY occurred_at DESC`,
+    [config.activity_retention_days]
+  );
+
+  // Buscar comandos executados
+  const commands = await query<unknown[]>(
+    `SELECT
+      c.id, c.device_id, c.type, c.status, c.created_at, c.executed_at,
+      cr.output, cr.error, cr.received_at as result_received_at
+    FROM commands c
+    LEFT JOIN command_results cr ON c.id = cr.command_id
+    WHERE c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    ORDER BY c.created_at DESC`,
+    [config.heartbeat_retention_days]
+  );
+
+  logger.info('LGPD Export: Dados exportados com sucesso', {
+    devices: (devices as unknown[])?.length ?? 0,
+    heartbeats: (heartbeats as unknown[])?.length ?? 0,
+    activityEvents: (activityEvents as unknown[])?.length ?? 0,
+    commands: (commands as unknown[])?.length ?? 0,
+  });
+
+  return {
+    exportedAt: new Date().toISOString(),
+    config,
+    devices: devices as unknown[] ?? [],
+    heartbeats: heartbeats as unknown[] ?? [],
+    activityEvents: activityEvents as unknown[] ?? [],
+    commands: commands as unknown[] ?? [],
   };
 }

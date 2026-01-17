@@ -33,6 +33,7 @@ public class Program
             builder.Services.AddSingleton<ApiClient>();
             builder.Services.AddSingleton<EnrollmentService>();
             builder.Services.AddSingleton<EventCollector>();
+            builder.Services.AddSingleton<InventoryCollector>();
             builder.Services.AddHostedService<PatioWorker>();
 
             // Configurar como Windows Service

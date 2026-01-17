@@ -97,8 +97,10 @@ public class AgentConfig
     public string? RefreshToken { get; set; }
     public EnrollmentStatus Status { get; set; } = EnrollmentStatus.NotEnrolled;
     public int HeartbeatIntervalSeconds { get; set; } = 300; // 5 minutos
+    public int InventoryIntervalMinutes { get; set; } = 60; // 1 hora
     public DateTime? LastHeartbeatAt { get; set; }
     public DateTime? LastEventSentAt { get; set; }
+    public DateTime? LastInventoryAt { get; set; }
 }
 
 public enum EnrollmentStatus
