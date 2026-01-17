@@ -372,8 +372,8 @@ export async function processHeartbeat(
   // Salva heartbeat no historico
   await insert(
     `INSERT INTO device_heartbeats
-      (device_id, cpu_usage_percent, ram_usage_percent, disk_free_gb, uptime_seconds, logged_user, agent_version, ip_address)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (device_id, cpu_percent, ram_percent, disk_free_gb, uptime_seconds, logged_user, ip_address)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       deviceInternalId,
       data.cpu_usage_percent ?? null,
@@ -381,7 +381,6 @@ export async function processHeartbeat(
       data.disk_free_gb ?? null,
       data.uptime_seconds ?? null,
       data.current_user ?? null,
-      data.agent_version ?? null,
       ipAddress ?? null,
     ]
   );
