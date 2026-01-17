@@ -128,9 +128,9 @@ export const featureMenuItems: NavItem[] = [
 
 export const integrationMenuItems: NavItem[] = [
   {
-    id: 'api-tokens',
+    id: 'api',
     name: 'Integracoes & API',
-    href: '/api-tokens',
+    href: '/api',
     icon: Code,
     requiredFeature: 'apiAccess',
     minPlan: 'Profissional',
@@ -259,7 +259,7 @@ export const pageNames: Record<string, string> = {
   '/alerts': 'Alertas',
   '/reports': 'Relatorios',
   '/geoip': 'Localizacao',
-  '/api-tokens': 'Integracoes & API',
+  '/api': 'Integracoes & API',
   '/webhooks': 'Webhooks',
   '/sso': 'Single Sign-On',
   '/shadow-it': 'Seguranca & Shadow IT',

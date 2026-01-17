@@ -17,6 +17,11 @@ import { Alerts } from './pages/Alerts';
 import { Reports } from './pages/Reports';
 import { GeoIP } from './pages/GeoIP';
 import { ApiAccess } from './pages/ApiAccess';
+import Webhooks from './pages/Webhooks';
+import SSO from './pages/SSO';
+import ShadowIT from './pages/ShadowIT';
+import AuditLogs from './pages/AuditLogs';
+import Branding from './pages/Branding';
 
 function App() {
   return (
@@ -43,6 +48,11 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="geoip" element={<GeoIP />} />
             <Route path="api" element={<ApiAccess />} />
+            <Route path="webhooks" element={<Webhooks />} />
+            <Route path="sso" element={<SSO />} />
+            <Route path="shadow-it" element={<ShadowIT />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="branding" element={<Branding />} />
             <Route path="plans" element={<Plans />} />
             <Route path="privacy" element={<Privacy />} />
             <Route path="settings" element={<Settings />} />
