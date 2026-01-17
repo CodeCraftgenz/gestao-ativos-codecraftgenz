@@ -5,6 +5,7 @@ import {
   FileBarChart,
   Download,
   Calendar,
+  Filter,
   Clock,
   TrendingUp,
   TrendingDown,
@@ -16,51 +17,31 @@ import {
   Crown,
   X,
   Loader2,
-  Eye,
-  ChevronRight,
-  BarChart3,
-  PieChart,
-  Server,
-  Cpu,
-  MemoryStick,
-  HardDriveDownload,
 } from 'lucide-react';
 import api from '../services/api';
-
-// Cores para cada categoria
-const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string }> = {
-  dispositivos: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: 'text-blue-500' },
-  desempenho: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: 'text-purple-500' },
-  usuarios: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: 'text-green-500' },
-  inventario: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: 'text-orange-500' },
-  geral: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: 'text-gray-500' },
-};
 
 // Tipos de relatorios disponiveis
 const reportTypes = [
   {
     id: 'uptime',
     name: 'Uptime dos Dispositivos',
-    description: 'Tempo online/offline de cada dispositivo no periodo',
+    description: 'Tempo online/offline de cada dispositivo no periodo selecionado',
     icon: Clock,
     category: 'dispositivos',
-    gradient: 'from-blue-500 to-blue-600',
   },
   {
     id: 'activity',
     name: 'Atividade por Periodo',
-    description: 'Heartbeats, logins e eventos de atividade',
+    description: 'Heartbeats, logins e eventos de atividade ao longo do tempo',
     icon: Activity,
     category: 'dispositivos',
-    gradient: 'from-blue-400 to-blue-500',
   },
   {
     id: 'usage',
     name: 'Uso de Recursos',
-    description: 'Consumo medio de CPU, RAM e disco',
+    description: 'Consumo medio de CPU, RAM e disco por dispositivo',
     icon: Zap,
     category: 'desempenho',
-    gradient: 'from-purple-500 to-purple-600',
   },
   {
     id: 'idle',
@@ -68,7 +49,6 @@ const reportTypes = [
     description: 'Ranking de maquinas com baixa utilizacao',
     icon: TrendingDown,
     category: 'desempenho',
-    gradient: 'from-purple-400 to-purple-500',
   },
   {
     id: 'users',
@@ -76,40 +56,31 @@ const reportTypes = [
     description: 'Historico de usuarios logados em cada maquina',
     icon: Users,
     category: 'usuarios',
-    gradient: 'from-green-500 to-green-600',
   },
   {
     id: 'inventory',
     name: 'Inventario de Hardware',
-    description: 'Lista completa de hardware dos dispositivos',
+    description: 'Lista completa de hardware de todos os dispositivos',
     icon: HardDrive,
     category: 'inventario',
-    gradient: 'from-orange-500 to-orange-600',
   },
+  // Inventario de Software REMOVIDO - LGPD compliance (nao expor apps instalados)
   {
     id: 'growth',
     name: 'Crescimento do Patio',
-    description: 'Evolucao do numero de dispositivos',
+    description: 'Evolucao do numero de dispositivos ao longo do tempo',
     icon: TrendingUp,
     category: 'geral',
-    gradient: 'from-gray-500 to-gray-600',
   },
 ];
 
 const categories = [
-  { id: 'all', name: 'Todos', icon: BarChart3 },
-  { id: 'dispositivos', name: 'Dispositivos', icon: Server },
-  { id: 'desempenho', name: 'Desempenho', icon: PieChart },
-  { id: 'usuarios', name: 'Usuarios', icon: Users },
-  { id: 'inventario', name: 'Inventario', icon: HardDrive },
-  { id: 'geral', name: 'Geral', icon: TrendingUp },
-];
-
-const dateRangeOptions = [
-  { value: '7d', label: '7 dias', shortLabel: '7D' },
-  { value: '15d', label: '15 dias', shortLabel: '15D' },
-  { value: '30d', label: '30 dias', shortLabel: '30D' },
-  { value: '90d', label: '90 dias', shortLabel: '90D' },
+  { id: 'all', name: 'Todos' },
+  { id: 'dispositivos', name: 'Dispositivos' },
+  { id: 'desempenho', name: 'Desempenho' },
+  { id: 'usuarios', name: 'Usuarios' },
+  { id: 'inventario', name: 'Inventario' },
+  { id: 'geral', name: 'Geral' },
 ];
 
 export function Reports() {
@@ -117,16 +88,19 @@ export function Reports() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [dateRange, setDateRange] = useState('30d');
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [reportData, setReportData] = useState<unknown>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
 
+  // Verifica se o usuario tem acesso a esta feature
   const hasAccess = hasFeature('reports');
 
+  // Filtra relatorios por categoria
   const filteredReports = reportTypes.filter(
     (r) => selectedCategory === 'all' || r.category === selectedCategory
   );
 
+  // Carrega dados do relatorio quando selecionado
   useEffect(() => {
     if (selectedReport) {
       loadReportData(selectedReport);
@@ -148,17 +122,20 @@ export function Reports() {
     }
   };
 
+  // Handler para visualizar relatorio
   const handleViewReport = (reportId: string) => {
     setSelectedReport(reportId);
   };
 
-  const handleExportReport = async (reportId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setIsExporting(reportId);
+  // Handler para exportar relatorio
+  const handleExportReport = async (reportId: string) => {
+    setIsExporting(true);
     try {
       const response = await api.get(`/api/admin/reports/${reportId}/export?range=${dateRange}`, {
         responseType: 'blob',
       });
+
+      // Criar blob e fazer download
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -169,34 +146,45 @@ export function Reports() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Erro ao exportar:', error);
-      alert('Erro ao exportar relatorio.');
+      console.error('Erro ao exportar relatorio:', error);
+      alert('Erro ao exportar relatorio. Tente novamente.');
     } finally {
-      setIsExporting(null);
+      setIsExporting(false);
     }
   };
 
+  // Busca dados do relatorio selecionado
   const selectedReportData = reportTypes.find(r => r.id === selectedReport);
-  const currentDateRange = dateRangeOptions.find(d => d.value === dateRange);
 
+  // Se nao tem acesso, mostra tela de upgrade
   if (!hasAccess) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-            <Lock size={40} className="text-gray-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Relatorios Avancados</h2>
-          <p className="text-gray-600 mb-6">
-            Acesse relatorios detalhados, exportacoes em CSV e analises completas do seu patio de maquinas.
-          </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 rounded-full text-sm mb-6">
-            <Crown size={16} />
-            <span>Disponivel a partir do plano Profissional</span>
-          </div>
+      <div>
+        <div className="page-header">
           <div>
-            <Link to="/plans" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-medium hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg shadow-primary-500/25">
-              <TrendingUp size={18} />
+            <h1 className="page-title">Relatorios</h1>
+            <p className="page-description">Relatorios e exportacoes detalhadas</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-body text-center py-12">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Lock size={32} className="text-gray-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Recurso Bloqueado
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              O sistema de relatorios avancados esta disponivel a partir do plano Profissional.
+              Faca upgrade para acessar relatorios detalhados e exportacoes.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-6">
+              <Crown size={16} className="text-yellow-500" />
+              <span>Seu plano atual: <strong>{plan?.name || 'Gratuito'}</strong></span>
+            </div>
+            <Link to="/plans" className="btn btn-primary">
+              <TrendingUp size={16} />
               Ver Planos
             </Link>
           </div>
@@ -206,198 +194,170 @@ export function Reports() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Relatorios</h1>
-          <p className="text-gray-500 mt-1">Analise detalhada do seu patio de maquinas</p>
-        </div>
-
-        {/* Date Range Selector */}
-        <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-          <Calendar size={18} className="text-gray-400 ml-2" />
-          {dateRangeOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setDateRange(option.value)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                dateRange === option.value
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {option.shortLabel}
-            </button>
-          ))}
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="page-header-row">
+          <div>
+            <h1 className="page-title">Relatorios</h1>
+            <p className="page-description">Gere relatorios detalhados do seu patio de maquinas</p>
+          </div>
         </div>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {categories.map((cat) => {
-          const colors = categoryColors[cat.id] || categoryColors.geral;
-          const isSelected = selectedCategory === cat.id;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                isSelected
-                  ? `${colors.bg} ${colors.text} ${colors.border} border-2 shadow-sm`
-                  : 'bg-white text-gray-600 border-2 border-transparent hover:bg-gray-50'
-              }`}
-            >
-              <cat.icon size={16} className={isSelected ? colors.icon : 'text-gray-400'} />
-              {cat.name}
-            </button>
-          );
-        })}
-      </div>
+      {/* Filtros */}
+      <div className="card mb-6">
+        <div className="card-body">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Periodo */}
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-gray-500" />
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
+                className="form-select"
+                aria-label="Selecionar periodo do relatorio"
+              >
+                <option value="7d">Ultimos 7 dias</option>
+                <option value="15d">Ultimos 15 dias</option>
+                <option value="30d">Ultimos 30 dias</option>
+                <option value="90d">Ultimos 90 dias</option>
+              </select>
+            </div>
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filteredReports.map((report) => {
-          const colors = categoryColors[report.category];
-          return (
-            <div
-              key={report.id}
-              className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer"
-              onClick={() => handleViewReport(report.id)}
-            >
-              {/* Card Header with Gradient */}
-              <div className={`bg-gradient-to-r ${report.gradient} p-5`}>
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <report.icon size={24} className="text-white" />
-                  </div>
+            {/* Categoria */}
+            <div className="flex items-center gap-2">
+              <Filter size={18} className="text-gray-500" />
+              <div className="flex gap-1 flex-wrap">
+                {categories.map((cat) => (
                   <button
+                    key={cat.id}
                     type="button"
-                    onClick={(e) => handleExportReport(report.id, e)}
-                    disabled={isExporting === report.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white text-sm font-medium transition-colors"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                      selectedCategory === cat.id
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    {isExporting === report.id ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Download size={14} />
-                    )}
-                    CSV
+                    {cat.name}
                   </button>
-                </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-primary-600 transition-colors">
-                  {report.name}
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">{report.description}</p>
-
-                <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${colors.bg} ${colors.text}`}>
-                    {categories.find(c => c.id === report.category)?.name}
-                  </span>
-                  <span className="flex items-center gap-1 text-sm text-primary-600 font-medium group-hover:gap-2 transition-all">
-                    <Eye size={16} />
-                    Visualizar
-                    <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </span>
-                </div>
+                ))}
               </div>
             </div>
-          );
-        })}
+          </div>
+        </div>
       </div>
 
-      {/* Info Card */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <FileBarChart size={24} className="text-blue-600" />
+      {/* Grid de Relatorios */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredReports.map((report) => (
+          <div key={report.id} className="card hover:shadow-lg transition-shadow">
+            <div className="card-body">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-primary-100 rounded-lg">
+                  <report.icon size={24} className="text-primary-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">{report.name}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{report.description}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm flex-1"
+                  onClick={() => handleViewReport(report.id)}
+                >
+                  <FileBarChart size={14} />
+                  Visualizar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm flex-1"
+                  onClick={() => handleExportReport(report.id)}
+                  disabled={isExporting}
+                >
+                  {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  Exportar
+                </button>
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {/* Info sobre formatos de exportacao */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-start gap-3">
+          <FileBarChart className="text-blue-600 mt-0.5" size={20} />
           <div>
-            <h4 className="font-semibold text-gray-900 mb-1">Exportacao de Dados</h4>
-            <p className="text-sm text-gray-600">
-              Todos os relatorios podem ser exportados em formato CSV para analise em Excel ou outras ferramentas.
-              Os dados ficam disponiveis por <strong>{plan?.data_retention_days || 30} dias</strong> conforme seu plano.
+            <h4 className="font-medium text-blue-900">Formatos de Exportacao</h4>
+            <p className="text-sm text-blue-700 mt-1">
+              Os relatorios sao exportados em formato CSV para facil importacao em Excel.
+              Dados ficam disponiveis por {plan?.data_retention_days || 30} dias conforme seu plano.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Modal de Visualizacao */}
+      {/* Modal de Visualizacao do Relatorio */}
       {selectedReport && selectedReportData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* Modal Header */}
-            <div className={`bg-gradient-to-r ${selectedReportData.gradient} p-6`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <selectedReportData.icon size={28} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">{selectedReportData.name}</h2>
-                    <p className="text-white/80 text-sm mt-0.5">
-                      Periodo: Ultimos {currentDateRange?.label}
-                    </p>
-                  </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header do Modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <selectedReportData.icon size={20} className="text-primary-600" />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedReport(null); setReportData(null); }}
-                  className="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl flex items-center justify-center transition-colors"
-                  aria-label="Fechar"
-                >
-                  <X size={20} className="text-white" />
-                </button>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{selectedReportData.name}</h2>
+                  <p className="text-sm text-gray-500">Periodo: {dateRange === '7d' ? 'Ultimos 7 dias' : dateRange === '15d' ? 'Ultimos 15 dias' : dateRange === '30d' ? 'Ultimos 30 dias' : 'Ultimos 90 dias'}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setReportData(null); }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Fechar"
+                aria-label="Fechar modal"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            {/* Corpo do Modal */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
               {isLoadingReport ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mb-4">
-                    <Loader2 className="animate-spin text-primary-600" size={32} />
-                  </div>
-                  <p className="text-gray-500 font-medium">Carregando dados do relatorio...</p>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-primary-600" size={32} />
+                  <span className="ml-3 text-gray-600">Carregando dados...</span>
                 </div>
               ) : (
                 <ReportContent reportId={selectedReport} data={reportData} />
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50">
-              <p className="text-sm text-gray-500">
-                Dados atualizados em tempo real
-              </p>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedReport(null); setReportData(null); }}
-                  className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  Fechar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportReport(selectedReport)}
-                  disabled={isExporting === selectedReport}
-                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-medium hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg shadow-primary-500/25 disabled:opacity-50"
-                >
-                  {isExporting === selectedReport ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <Download size={18} />
-                  )}
-                  Exportar CSV
-                </button>
-              </div>
+            {/* Footer do Modal */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setReportData(null); }}
+                className="btn btn-secondary"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportReport(selectedReport)}
+                className="btn btn-primary"
+                disabled={isExporting}
+              >
+                {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Exportar CSV
+              </button>
             </div>
           </div>
         </div>
@@ -406,64 +366,16 @@ export function Reports() {
   );
 }
 
-// Componente de Stat Card reutilizavel
-function StatCard({ value, label, color, icon: Icon }: { value: string | number; label: string; color: string; icon?: React.ElementType }) {
-  const colorClasses: Record<string, string> = {
-    green: 'bg-green-50 text-green-600 border-green-100',
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    orange: 'bg-orange-50 text-orange-600 border-orange-100',
-    purple: 'bg-purple-50 text-purple-600 border-purple-100',
-    red: 'bg-red-50 text-red-600 border-red-100',
-    gray: 'bg-gray-50 text-gray-600 border-gray-100',
-  };
-
-  return (
-    <div className={`p-4 rounded-xl border ${colorClasses[color] || colorClasses.gray}`}>
-      <div className="flex items-center gap-3">
-        {Icon && <Icon size={20} className="opacity-60" />}
-        <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-sm opacity-80">{label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Componente de Tabela estilizada
-function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200">
-      <table className="min-w-full">
-        <thead>
-          <tr className="bg-gray-50">
-            {headers.map((header, i) => (
-              <th key={i} className="text-left py-3 px-4 text-sm font-semibold text-gray-700 border-b border-gray-200">
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {children}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 // Componente para renderizar o conteudo de cada relatorio
 function ReportContent({ reportId, data }: { reportId: string; data: unknown }) {
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-          <FileBarChart size={40} className="text-gray-400" />
+      <div className="text-center py-12">
+        <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <FileBarChart size={32} className="text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Sem dados disponíveis</h3>
-        <p className="text-gray-500 text-center max-w-md">
-          Nenhum dado encontrado para o periodo selecionado. Tente selecionar um periodo diferente.
-        </p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Sem dados</h3>
+        <p className="text-gray-500 max-w-md mx-auto">Nenhum dado encontrado para o periodo selecionado.</p>
       </div>
     );
   }
@@ -472,38 +384,59 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
     case 'uptime': {
       const report = data as {
         summary: { avgUptimePercent: number; avgOnlineHours: number; avgOfflineHours: number; totalDevices: number };
-        devices: Array<{ id: number; hostname: string; serviceTag: string | null; uptimePercent: number; onlineHours: number; offlineHours: number }>;
+        devices: Array<{ id: number; hostname: string; serviceTag: string | null; uptimePercent: number; onlineHours: number; offlineHours: number; lastSeen: string | null }>;
       };
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard value={`${report.summary.avgUptimePercent}%`} label="Uptime Medio" color="green" icon={TrendingUp} />
-            <StatCard value={`${report.summary.avgOnlineHours}h`} label="Online Medio" color="blue" icon={Clock} />
-            <StatCard value={`${report.summary.avgOfflineHours}h`} label="Offline Medio" color="orange" icon={TrendingDown} />
-            <StatCard value={report.summary.totalDevices} label="Dispositivos" color="gray" icon={Server} />
+        <div>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Resumo de Uptime</h4>
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-green-600">{report.summary.avgUptimePercent}%</div>
+                <div className="text-sm text-gray-500">Uptime Medio</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.avgOnlineHours}h</div>
+                <div className="text-sm text-gray-500">Tempo Online Medio</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">{report.summary.avgOfflineHours}h</div>
+                <div className="text-sm text-gray-500">Tempo Offline Medio</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-gray-600">{report.summary.totalDevices}</div>
+                <div className="text-sm text-gray-500">Dispositivos</div>
+              </div>
+            </div>
           </div>
-
-          {report.devices.length > 0 && (
-            <DataTable headers={['Dispositivo', 'Service Tag', 'Uptime', 'Online', 'Offline']}>
-              {report.devices.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{d.hostname}</td>
-                  <td className="py-3 px-4 text-gray-500">{d.serviceTag || '-'}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium ${
-                      d.uptimePercent >= 90 ? 'bg-green-100 text-green-700' :
-                      d.uptimePercent >= 70 ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {d.uptimePercent}%
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-gray-600">{d.onlineHours}h</td>
-                  <td className="py-3 px-4 text-gray-600">{d.offlineHours}h</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Service Tag</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Uptime</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Online</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Offline</th>
                 </tr>
-              ))}
-            </DataTable>
-          )}
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-gray-600">{d.serviceTag || '-'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <span className={`font-medium ${d.uptimePercent >= 90 ? 'text-green-600' : d.uptimePercent >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {d.uptimePercent}%
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.onlineHours}h</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.offlineHours}h</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
@@ -514,29 +447,59 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
         dailyActivity: Array<{ date: string; heartbeats: number; logins: number; events: number }>;
       };
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <StatCard value={report.summary.totalHeartbeats.toLocaleString()} label="Heartbeats" color="blue" />
-            <StatCard value={report.summary.totalLogins} label="Logins" color="green" />
-            <StatCard value={report.summary.totalLogouts} label="Logouts" color="orange" />
-            <StatCard value={report.summary.totalBoots} label="Boots" color="purple" />
-            <StatCard value={report.summary.totalShutdowns} label="Shutdowns" color="red" />
-            <StatCard value={report.summary.activeDevices} label="Ativos" color="gray" />
+        <div>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Resumo de Atividade</h4>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.totalHeartbeats.toLocaleString()}</div>
+                <div className="text-sm text-gray-500">Heartbeats</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-green-600">{report.summary.totalLogins}</div>
+                <div className="text-sm text-gray-500">Logins</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">{report.summary.totalLogouts}</div>
+                <div className="text-sm text-gray-500">Logouts</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-purple-600">{report.summary.totalBoots}</div>
+                <div className="text-sm text-gray-500">Boots</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-red-600">{report.summary.totalShutdowns}</div>
+                <div className="text-sm text-gray-500">Shutdowns</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-gray-600">{report.summary.activeDevices}</div>
+                <div className="text-sm text-gray-500">Dispositivos Ativos</div>
+              </div>
+            </div>
           </div>
-
           {report.dailyActivity.length > 0 && (
-            <DataTable headers={['Data', 'Heartbeats', 'Logins', 'Eventos']}>
-              {report.dailyActivity.map((d) => (
-                <tr key={d.date} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">
-                    {new Date(d.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
-                  </td>
-                  <td className="py-3 px-4 text-blue-600 font-medium">{d.heartbeats}</td>
-                  <td className="py-3 px-4 text-green-600 font-medium">{d.logins}</td>
-                  <td className="py-3 px-4 text-gray-600">{d.events}</td>
-                </tr>
-              ))}
-            </DataTable>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Data</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Heartbeats</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Logins</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Eventos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.dailyActivity.map((d) => (
+                    <tr key={d.date} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{new Date(d.date).toLocaleDateString('pt-BR')}</td>
+                      <td className="py-2 px-3 text-center text-blue-600">{d.heartbeats}</td>
+                      <td className="py-2 px-3 text-center text-green-600">{d.logins}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.events}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       );
@@ -548,87 +511,89 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
         devices: Array<{ id: number; hostname: string; avgCpu: number; avgRam: number; avgDisk: number }>;
       };
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard value={`${report.summary.avgCpuPercent}%`} label="CPU Media" color="blue" icon={Cpu} />
-            <StatCard value={`${report.summary.avgRamPercent}%`} label="RAM Media" color="purple" icon={MemoryStick} />
-            <StatCard value={`${report.summary.avgDiskUsedPercent}%`} label="Disco Medio" color="orange" icon={HardDriveDownload} />
+        <div>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Media Geral de Uso</h4>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.avgCpuPercent}%</div>
+                <div className="text-sm text-gray-500">CPU Media</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-purple-600">{report.summary.avgRamPercent}%</div>
+                <div className="text-sm text-gray-500">RAM Media</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">{report.summary.avgDiskUsedPercent}%</div>
+                <div className="text-sm text-gray-500">Disco Medio</div>
+              </div>
+            </div>
           </div>
-
-          {report.devices.length > 0 && (
-            <DataTable headers={['Dispositivo', 'CPU', 'RAM', 'Disco']}>
-              {report.devices.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{d.hostname}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${d.avgCpu}%` }} />
-                      </div>
-                      <span className="text-sm text-gray-600">{d.avgCpu}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${d.avgRam}%` }} />
-                      </div>
-                      <span className="text-sm text-gray-600">{d.avgRam}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${d.avgDisk}%` }} />
-                      </div>
-                      <span className="text-sm text-gray-600">{d.avgDisk}%</span>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">CPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Disco</th>
                 </tr>
-              ))}
-            </DataTable>
-          )}
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-center text-blue-600">{d.avgCpu}%</td>
+                    <td className="py-2 px-3 text-center text-purple-600">{d.avgRam}%</td>
+                    <td className="py-2 px-3 text-center text-orange-600">{d.avgDisk}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
 
     case 'idle': {
       const report = data as {
-        devices: Array<{ id: number; hostname: string; avgCpu: number; avgRam: number; idleScore: number }>;
+        devices: Array<{ id: number; hostname: string; serviceTag: string | null; avgCpu: number; avgRam: number; idleScore: number; lastActivity: string | null }>;
       };
       return (
-        <div className="space-y-6">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <TrendingDown size={20} className="text-yellow-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-yellow-800">Dispositivos com Baixa Utilizacao</h4>
-                <p className="text-sm text-yellow-700">Maquinas com menos de 20% CPU e 40% RAM no periodo.</p>
-              </div>
-            </div>
+        <div>
+          <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h4 className="font-medium text-yellow-800 mb-1">Dispositivos Ociosos</h4>
+            <p className="text-sm text-yellow-700">Maquinas com menos de 20% CPU e 40% RAM no periodo.</p>
           </div>
-
           {report.devices.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              Nenhum dispositivo ocioso encontrado neste periodo.
-            </div>
+            <p className="text-center text-gray-500 py-8">Nenhum dispositivo ocioso encontrado.</p>
           ) : (
-            <DataTable headers={['Dispositivo', 'CPU Media', 'RAM Media', 'Score Ociosidade']}>
-              {report.devices.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{d.hostname}</td>
-                  <td className="py-3 px-4 text-gray-600">{d.avgCpu}%</td>
-                  <td className="py-3 px-4 text-gray-600">{d.avgRam}%</td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg font-semibold">
-                      {d.idleScore}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">CPU</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Score Ociosidade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.devices.map((d) => (
+                    <tr key={d.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.avgCpu}%</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.avgRam}%</td>
+                      <td className="py-2 px-3 text-center">
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                          {d.idleScore}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       );
@@ -636,24 +601,36 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
 
     case 'users': {
       const report = data as {
-        devices: Array<{ id: number; hostname: string; uniqueUsers: number; lastUser: string | null; users: string[] }>;
+        devices: Array<{ id: number; hostname: string; uniqueUsers: number; lastUser: string | null; lastLoginAt: string | null; users: string[] }>;
       };
       return (
-        <div className="space-y-6">
-          <DataTable headers={['Dispositivo', 'Qtd Usuarios', 'Ultimo Usuario', 'Usuarios']}>
-            {report.devices.map((d) => (
-              <tr key={d.id} className="hover:bg-gray-50">
-                <td className="py-3 px-4 font-medium text-gray-900">{d.hostname}</td>
-                <td className="py-3 px-4">
-                  <span className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg font-semibold">
-                    {d.uniqueUsers}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-gray-600">{d.lastUser || '-'}</td>
-                <td className="py-3 px-4 text-gray-500 text-sm max-w-xs truncate">{d.users.join(', ') || '-'}</td>
-              </tr>
-            ))}
-          </DataTable>
+        <div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Usuarios</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Ultimo Usuario</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Lista de Usuarios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-center">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {d.uniqueUsers}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-gray-600">{d.lastUser || '-'}</td>
+                    <td className="py-2 px-3 text-gray-500 text-xs">{d.users.join(', ') || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
@@ -663,44 +640,41 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
         devices: Array<{ id: number; hostname: string; serviceTag: string | null; cpuModel: string | null; cpuCores: number | null; ramTotalGb: number | null; gpuModel: string | null; totalDiskGb: number | null; diskType: string | null; osName: string | null }>;
       };
       return (
-        <div className="space-y-6">
-          <DataTable headers={['Dispositivo', 'CPU', 'RAM', 'GPU', 'Disco', 'SO']}>
-            {report.devices.map((d) => (
-              <tr key={d.id} className="hover:bg-gray-50">
-                <td className="py-3 px-4">
-                  <div className="font-medium text-gray-900">{d.hostname}</div>
-                  {d.serviceTag && <div className="text-xs text-gray-500">{d.serviceTag}</div>}
-                </td>
-                <td className="py-3 px-4">
-                  <div className="text-sm text-gray-600 max-w-[150px] truncate" title={d.cpuModel || undefined}>
-                    {d.cpuModel || '-'}
-                  </div>
-                  {d.cpuCores && <div className="text-xs text-gray-400">{d.cpuCores} cores</div>}
-                </td>
-                <td className="py-3 px-4">
-                  {d.ramTotalGb ? (
-                    <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-medium">
-                      {d.ramTotalGb} GB
-                    </span>
-                  ) : '-'}
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-600 max-w-[120px] truncate" title={d.gpuModel || undefined}>
-                  {d.gpuModel || '-'}
-                </td>
-                <td className="py-3 px-4">
-                  {d.totalDiskGb ? (
-                    <div>
-                      <span className="font-medium text-gray-900">{d.totalDiskGb} GB</span>
+        <div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">CPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Cores</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">GPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Disco</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">SO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3">
+                      <div className="font-medium">{d.hostname}</div>
+                      {d.serviceTag && <div className="text-xs text-gray-500">{d.serviceTag}</div>}
+                    </td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.cpuModel || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.cpuCores || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.ramTotalGb ? `${d.ramTotalGb} GB` : '-'}</td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.gpuModel || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">
+                      {d.totalDiskGb ? `${d.totalDiskGb} GB` : '-'}
                       {d.diskType && <span className="text-xs text-gray-400 ml-1">({d.diskType})</span>}
-                    </div>
-                  ) : '-'}
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-600 max-w-[150px] truncate" title={d.osName || undefined}>
-                  {d.osName || '-'}
-                </td>
-              </tr>
-            ))}
-          </DataTable>
+                    </td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.osName || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
@@ -711,32 +685,47 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
         monthly: Array<{ month: string; total: number; new: number }>;
       };
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard value={report.summary.totalDevices} label="Total Atual" color="blue" icon={Server} />
-            <StatCard value={`+${report.summary.newInPeriod}`} label="Novos no Periodo" color="green" icon={TrendingUp} />
-            <StatCard
-              value={`${report.summary.growthPercent >= 0 ? '+' : ''}${report.summary.growthPercent}%`}
-              label="Crescimento"
-              color={report.summary.growthPercent >= 0 ? 'green' : 'red'}
-              icon={report.summary.growthPercent >= 0 ? TrendingUp : TrendingDown}
-            />
+        <div>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Resumo de Crescimento</h4>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.totalDevices}</div>
+                <div className="text-sm text-gray-500">Total Atual</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-green-600">+{report.summary.newInPeriod}</div>
+                <div className="text-sm text-gray-500">Novos no Periodo</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className={`text-2xl font-bold ${report.summary.growthPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {report.summary.growthPercent >= 0 ? '+' : ''}{report.summary.growthPercent}%
+                </div>
+                <div className="text-sm text-gray-500">Crescimento</div>
+              </div>
+            </div>
           </div>
-
           {report.monthly.length > 0 && (
-            <DataTable headers={['Mes', 'Total Acumulado', 'Novos']}>
-              {report.monthly.map((m) => (
-                <tr key={m.month} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{m.month}</td>
-                  <td className="py-3 px-4 text-gray-600">{m.total}</td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 rounded-lg font-medium">
-                      +{m.new}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Mes</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Total</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Novos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.monthly.map((m) => (
+                    <tr key={m.month} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{m.month}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{m.total}</td>
+                      <td className="py-2 px-3 text-center text-green-600">+{m.new}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       );
@@ -744,12 +733,12 @@ function ReportContent({ reportId, data }: { reportId: string; data: unknown }) 
 
     default:
       return (
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-            <FileBarChart size={40} className="text-gray-400" />
+        <div className="text-center py-12">
+          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <FileBarChart size={32} className="text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Relatorio em Desenvolvimento</h3>
-          <p className="text-gray-500">Este relatorio estara disponível em breve.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Relatorio em Desenvolvimento</h3>
+          <p className="text-gray-500 max-w-md mx-auto">Este relatorio ainda esta sendo implementado.</p>
         </div>
       );
   }
