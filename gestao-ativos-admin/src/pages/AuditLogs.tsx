@@ -1,5 +1,24 @@
 import { useState } from 'react';
-import { FileText, Download, Filter, Search, User, Monitor, Settings, AlertTriangle } from 'lucide-react';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { Link } from 'react-router-dom';
+import {
+  FileText,
+  Download,
+  Filter,
+  Search,
+  User,
+  Monitor,
+  Settings,
+  AlertTriangle,
+  Lock,
+  Crown,
+  TrendingUp,
+  Shield,
+  Clock,
+  Activity,
+  Eye,
+  Calendar,
+} from 'lucide-react';
 
 interface AuditLog {
   id: number;
@@ -13,6 +32,7 @@ interface AuditLog {
 }
 
 export default function AuditLogs() {
+  const { hasFeature, plan } = useSubscription();
   const [logs] = useState<AuditLog[]>([
     {
       id: 1,
@@ -75,17 +95,21 @@ export default function AuditLogs() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  const hasAccess = hasFeature('auditLogs');
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'user':
-        return <User size={16} className="text-blue-400" />;
+        return <User size={16} className="text-blue-500" />;
       case 'device':
-        return <Monitor size={16} className="text-green-400" />;
+        return <Monitor size={16} className="text-green-500" />;
       case 'system':
-        return <Settings size={16} className="text-purple-400" />;
+        return <Settings size={16} className="text-purple-500" />;
       case 'security':
-        return <AlertTriangle size={16} className="text-red-400" />;
+        return <AlertTriangle size={16} className="text-red-500" />;
       default:
         return <FileText size={16} className="text-gray-400" />;
     }
@@ -106,6 +130,21 @@ export default function AuditLogs() {
     }
   };
 
+  const getCategoryBadge = (category: string) => {
+    switch (category) {
+      case 'user':
+        return 'badge badge-info';
+      case 'device':
+        return 'badge badge-success';
+      case 'system':
+        return 'badge badge-secondary';
+      case 'security':
+        return 'badge badge-danger';
+      default:
+        return 'badge badge-secondary';
+    }
+  };
+
   const filteredLogs = logs.filter(log => {
     const matchesSearch =
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -119,146 +158,361 @@ export default function AuditLogs() {
   });
 
   const handleExport = (format: 'csv' | 'json') => {
-    // Placeholder for export functionality
     alert(`Exportando logs em formato ${format.toUpperCase()}...`);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FileText className="text-primary" />
-            Auditoria & Logs
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Visualize e exporte logs de auditoria do sistema
-          </p>
+  const handleViewDetails = (log: AuditLog) => {
+    setSelectedLog(log);
+    setShowDetailModal(true);
+  };
+
+  // Se nao tem acesso, mostra tela de upgrade
+  if (!hasAccess) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Auditoria & Logs</h1>
+            <p className="page-description">Registros completos de todas as acoes do sistema</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleExport('csv')}
-            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Download size={18} />
-            Exportar CSV
-          </button>
-          <button
-            onClick={() => handleExport('json')}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Download size={18} />
-            Exportar JSON
-          </button>
+
+        <div className="card">
+          <div className="card-body text-center py-12">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Lock size={32} className="text-gray-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Recurso Bloqueado
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Logs de auditoria estao disponiveis a partir do plano Profissional.
+              Mantenha um registro completo de todas as acoes para compliance e seguranca.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-6">
+              <Crown size={16} className="text-yellow-500" />
+              <span>Seu plano atual: <strong>{plan?.name || 'Gratuito'}</strong></span>
+            </div>
+            <Link to="/plans" className="btn btn-primary">
+              <TrendingUp size={16} />
+              Ver Planos
+            </Link>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="mt-6 opacity-50 pointer-events-none">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card">
+              <div className="card-body text-center">
+                <Shield size={32} className="mx-auto mb-2 text-gray-400" />
+                <h3 className="font-medium">Compliance</h3>
+                <p className="text-sm text-gray-500">Atenda requisitos de auditoria</p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body text-center">
+                <Clock size={32} className="mx-auto mb-2 text-gray-400" />
+                <h3 className="font-medium">Historico Completo</h3>
+                <p className="text-sm text-gray-500">Todas as acoes registradas</p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body text-center">
+                <Download size={32} className="mx-auto mb-2 text-gray-400" />
+                <h3 className="font-medium">Exportacao</h3>
+                <p className="text-sm text-gray-500">CSV, JSON e mais</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Estatisticas
+  const stats = {
+    total: logs.length,
+    today: logs.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length,
+    security: logs.filter(l => l.category === 'security').length,
+    users: new Set(logs.map(l => l.actor)).size,
+  };
+
+  return (
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="page-header-row">
+          <div>
+            <h1 className="page-title">Auditoria & Logs</h1>
+            <p className="page-description">
+              Visualize e exporte logs de auditoria do sistema
+            </p>
+          </div>
+          <div className="page-header-actions">
+            <button type="button" onClick={() => handleExport('csv')} className="btn btn-secondary">
+              <Download size={16} />
+              Exportar CSV
+            </button>
+            <button type="button" onClick={() => handleExport('json')} className="btn btn-primary">
+              <Download size={16} />
+              Exportar JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="card">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total de Registros</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+              <FileText className="text-primary" size={24} />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Registros Hoje</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.today}</p>
+              </div>
+              <Calendar className="text-blue-500" size={24} />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Eventos Seguranca</p>
+                <p className="text-2xl font-bold text-red-600">{stats.security}</p>
+              </div>
+              <AlertTriangle className="text-red-500" size={24} />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Usuarios Ativos</p>
+                <p className="text-2xl font-bold text-green-600">{stats.users}</p>
+              </div>
+              <Activity className="text-green-500" size={24} />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Search */}
-        <div className="flex-1 relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar logs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary"
-          />
-        </div>
-
-        {/* Category Filter */}
-        <div className="flex items-center gap-2">
-          <Filter size={18} className="text-gray-400" />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-          >
-            <option value="all">Todas categorias</option>
-            <option value="user">Usuario</option>
-            <option value="device">Dispositivo</option>
-            <option value="system">Sistema</option>
-            <option value="security">Seguranca</option>
-          </select>
+      <div className="card mb-6">
+        <div className="card-body">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar logs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter size={18} className="text-gray-400" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="form-input"
+                aria-label="Filtrar por categoria"
+              >
+                <option value="all">Todas categorias</option>
+                <option value="user">Usuario</option>
+                <option value="device">Dispositivo</option>
+                <option value="system">Sistema</option>
+                <option value="security">Seguranca</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Logs Table */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-900">
-            <tr>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Data/Hora</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Categoria</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Acao</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Ator</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Alvo</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Detalhes</th>
-              <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">IP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLogs.map((log) => (
-              <tr key={log.id} className="border-t border-gray-700 hover:bg-gray-700/50">
-                <td className="px-4 py-3">
-                  <span className="text-gray-300 text-sm">
-                    {new Date(log.timestamp).toLocaleString('pt-BR')}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {getCategoryIcon(log.category)}
-                    <span className="text-gray-300 text-sm">{getCategoryLabel(log.category)}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-white font-medium text-sm">{log.action}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-gray-300 text-sm">{log.actor}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-gray-400 text-sm">{log.target || '-'}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-gray-400 text-sm">{log.details}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-gray-500 text-sm font-mono">{log.ipAddress}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="card mb-6">
+        <div className="card-header">
+          <h2 className="card-title">Registros de Auditoria</h2>
+        </div>
+        <div className="card-body p-0">
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Data/Hora</th>
+                  <th>Categoria</th>
+                  <th>Acao</th>
+                  <th>Ator</th>
+                  <th>Alvo</th>
+                  <th>IP</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>
+                      <span className="text-sm text-gray-600">
+                        {new Date(log.timestamp).toLocaleString('pt-BR')}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={getCategoryBadge(log.category)}>
+                        <span className="flex items-center gap-1">
+                          {getCategoryIcon(log.category)}
+                          {getCategoryLabel(log.category)}
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      <span className="font-medium text-gray-900">{log.action}</span>
+                    </td>
+                    <td>
+                      <span className="text-gray-600">{log.actor}</span>
+                    </td>
+                    <td>
+                      <span className="text-gray-500">{log.target || '-'}</span>
+                    </td>
+                    <td>
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">{log.ipAddress}</code>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => handleViewDetails(log)}
+                        className="btn btn-ghost btn-sm"
+                        title="Ver detalhes"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Pagination placeholder */}
-      <div className="flex items-center justify-between">
-        <span className="text-gray-400 text-sm">
+      {/* Pagination */}
+      <div className="flex items-center justify-between mb-6">
+        <span className="text-gray-500 text-sm">
           Mostrando {filteredLogs.length} de {logs.length} registros
         </span>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50" disabled>
+          <button type="button" className="btn btn-secondary btn-sm" disabled>
             Anterior
           </button>
-          <span className="px-3 py-1 bg-primary text-white rounded">1</span>
-          <button className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50" disabled>
+          <span className="px-3 py-1 bg-primary text-white rounded text-sm">1</span>
+          <button type="button" className="btn btn-secondary btn-sm" disabled>
             Proximo
           </button>
         </div>
       </div>
 
       {/* Retention Info */}
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-        <h3 className="text-yellow-400 font-semibold mb-2">Retencao de Logs</h3>
-        <p className="text-gray-300 text-sm">
-          De acordo com as configuracoes LGPD do seu plano, os logs de auditoria sao mantidos
-          por <strong className="text-white">365 dias</strong>. Apos esse periodo, os logs sao
-          automaticamente anonimizados e agregados para fins estatisticos.
-        </p>
+      <div className="alert alert-warning">
+        <Clock className="alert-icon" />
+        <div>
+          <h4 className="font-semibold">Retencao de Logs</h4>
+          <p className="text-sm mt-1">
+            De acordo com as configuracoes LGPD do seu plano, os logs de auditoria sao mantidos
+            por <strong>365 dias</strong>. Apos esse periodo, os logs sao
+            automaticamente anonimizados e agregados para fins estatisticos.
+          </p>
+        </div>
       </div>
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedLog && (
+        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Detalhes do Registro</h3>
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="btn btn-ghost btn-sm"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">ID</label>
+                    <p className="text-gray-900">#{selectedLog.id}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Data/Hora</label>
+                    <p className="text-gray-900">
+                      {new Date(selectedLog.timestamp).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Categoria</label>
+                    <p className="flex items-center gap-2 mt-1">
+                      <span className={getCategoryBadge(selectedLog.category)}>
+                        {getCategoryLabel(selectedLog.category)}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Acao</label>
+                    <p className="text-gray-900 font-medium">{selectedLog.action}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ator</label>
+                  <p className="text-gray-900">{selectedLog.actor}</p>
+                </div>
+                {selectedLog.target && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Alvo</label>
+                    <p className="text-gray-900">{selectedLog.target}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Detalhes</label>
+                  <p className="text-gray-900">{selectedLog.details}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Endereco IP</label>
+                  <p>
+                    <code className="text-sm bg-gray-100 px-2 py-1 rounded">{selectedLog.ipAddress}</code>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="btn btn-secondary"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

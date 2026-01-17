@@ -12,8 +12,11 @@
 
 -- Plano Gratuito
 -- Features: Basico, sem recursos avancados
+-- Preco: R$ 0
 UPDATE plans SET
   data_retention_days = 7,
+  price_monthly_cents = 0,
+  price_yearly_cents = 0,
   description = 'Para pequenas empresas iniciando o controle de ativos',
   features = JSON_OBJECT(
     'max_devices', 5,
@@ -36,8 +39,11 @@ WHERE slug = 'gratuito';
 
 -- Plano Basico
 -- Features: Relatorios basicos, acesso remoto
+-- Preco: R$ 99/mes ou R$ 588/ano (R$ 49/mes equivalente - 50% desconto)
 UPDATE plans SET
   data_retention_days = 30,
+  price_monthly_cents = 9900,
+  price_yearly_cents = 58800,
   description = 'Para empresas em crescimento com necessidades basicas',
   features = JSON_OBJECT(
     'max_devices', 20,
@@ -60,8 +66,11 @@ WHERE slug = 'basico';
 
 -- Plano Profissional
 -- Features: API (leitura), Shadow IT, Export de logs, Suporte prioritario
+-- Preco: R$ 249/mes ou R$ 1.788/ano (R$ 149/mes equivalente - 40% desconto)
 UPDATE plans SET
   data_retention_days = 90,
+  price_monthly_cents = 24900,
+  price_yearly_cents = 178800,
   description = 'Para empresas que precisam de relatorios e integracao',
   features = JSON_OBJECT(
     'max_devices', 100,
@@ -85,8 +94,11 @@ WHERE slug = 'profissional';
 
 -- Plano Empresarial
 -- Features: TUDO liberado - SSO, API read/write, White-label, MSI, Webhooks
+-- Preco: R$ 599/mes ou R$ 4.188/ano (R$ 349/mes equivalente - 42% desconto)
 UPDATE plans SET
   data_retention_days = 1825,
+  price_monthly_cents = 59900,
+  price_yearly_cents = 418800,
   description = 'Para grandes empresas com compliance e auditoria',
   features = JSON_OBJECT(
     'max_devices', 999999,

@@ -208,14 +208,14 @@ export function Reports() {
       {/* Filtros */}
       <div className="card mb-6">
         <div className="card-body">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Periodo */}
-            <div className="flex items-center gap-2">
-              <Calendar size={18} className="text-gray-500" />
+            <div className="flex items-center gap-3">
+              <Calendar size={18} className="text-gray-400" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="form-select"
+                className="form-input"
                 aria-label="Selecionar periodo do relatorio"
               >
                 <option value="7d">Ultimos 7 dias</option>
@@ -225,19 +225,19 @@ export function Reports() {
               </select>
             </div>
 
-            {/* Categoria */}
+            {/* Categoria - Pills melhorados */}
             <div className="flex items-center gap-2">
-              <Filter size={18} className="text-gray-500" />
-              <div className="flex gap-1 flex-wrap">
+              <Filter size={18} className="text-gray-400" />
+              <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                       selectedCategory === cat.id
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
                     }`}
                   >
                     {cat.name}
