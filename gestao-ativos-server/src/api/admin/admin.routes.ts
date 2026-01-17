@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import * as adminController from './admin.controller.js';
 import * as reportsController from './reports.controller.js';
+import * as enterpriseController from './enterprise.controller.js';
 
 const router = Router();
 
@@ -53,5 +54,37 @@ router.get('/reports/idle/export', reportsController.exportIdleCSV);
 router.get('/reports/users/export', reportsController.exportUsersCSV);
 router.get('/reports/inventory/export', reportsController.exportInventoryCSV);
 router.get('/reports/growth/export', reportsController.exportGrowthCSV);
+
+// =============================================================================
+// ENTERPRISE FEATURES
+// =============================================================================
+
+// Plan Features
+router.get('/features', enterpriseController.getPlanFeatures);
+
+// SSO (Single Sign-On)
+router.get('/sso', enterpriseController.getSSOConfig);
+router.post('/sso', enterpriseController.createSSOConfig);
+router.put('/sso', enterpriseController.updateSSOConfig);
+router.delete('/sso', enterpriseController.deleteSSOConfig);
+
+// Webhooks
+router.get('/webhooks', enterpriseController.getWebhooks);
+router.get('/webhooks/:id', enterpriseController.getWebhookById);
+router.post('/webhooks', enterpriseController.createWebhook);
+router.put('/webhooks/:id', enterpriseController.updateWebhook);
+router.delete('/webhooks/:id', enterpriseController.deleteWebhook);
+router.get('/webhooks/:id/logs', enterpriseController.getWebhookLogs);
+router.post('/webhooks/:id/test', enterpriseController.testWebhook);
+
+// White-Label (Branding)
+router.get('/branding', enterpriseController.getBranding);
+router.put('/branding', enterpriseController.updateBranding);
+router.delete('/branding', enterpriseController.deleteBranding);
+
+// API Tokens
+router.get('/api-tokens', enterpriseController.getApiTokens);
+router.post('/api-tokens', enterpriseController.createApiToken);
+router.delete('/api-tokens/:id', enterpriseController.revokeApiToken);
 
 export default router;

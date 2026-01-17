@@ -369,3 +369,146 @@ export interface DashboardAnalytics {
   recent_activity: RecentActivity[];
   plan_usage: PlanUsage;
 }
+
+// =============================================================================
+// ENTERPRISE FEATURES
+// =============================================================================
+
+export interface PlanFeatures {
+  max_devices: number;
+  data_retention_days: number;
+  reports: boolean;
+  api_access: boolean;
+  api_access_level?: 'read' | 'read_write';
+  webhooks: boolean;
+  sso_enabled: boolean;
+  white_label: boolean;
+  priority_support: boolean;
+  remote_access: boolean;
+  audit_logs: boolean;
+  dedicated_support?: boolean;
+  sla_guarantee?: boolean;
+  custom_retention?: boolean;
+}
+
+export interface Plan {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  max_devices: number;
+  data_retention_days: number;
+  price_monthly_cents: number;
+  features: PlanFeatures | null;
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface Subscription {
+  id: number;
+  user_id: number;
+  plan_id: number;
+  status: 'active' | 'canceled' | 'expired';
+  started_at: Date;
+  expires_at: Date | null;
+  plan?: Plan;
+}
+
+// SSO Config
+export type SSOProvider = 'azure_ad' | 'google' | 'okta' | 'saml_generic';
+
+export interface SSOConfig {
+  id: number;
+  user_id: number;
+  provider: SSOProvider;
+  client_id: string | null;
+  tenant_id: string | null;
+  domain: string | null;
+  saml_metadata_url: string | null;
+  saml_entity_id: string | null;
+  saml_sso_url: string | null;
+  is_enabled: boolean;
+  is_verified: boolean;
+  verified_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Webhook Config
+export type WebhookEvent =
+  | 'device.offline'
+  | 'device.online'
+  | 'device.new'
+  | 'device.boot'
+  | 'device.shutdown'
+  | 'user.login'
+  | 'user.logout'
+  | 'alert.created'
+  | 'alert.resolved';
+
+export interface WebhookConfig {
+  id: number;
+  user_id: number;
+  name: string;
+  url: string;
+  secret_key: string | null;
+  events: WebhookEvent[];
+  custom_headers: Record<string, string> | null;
+  is_enabled: boolean;
+  last_triggered_at: Date | null;
+  last_status_code: number | null;
+  total_calls: number;
+  total_failures: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface WebhookLog {
+  id: number;
+  webhook_id: number;
+  event_type: string;
+  payload: Record<string, unknown>;
+  status_code: number | null;
+  response_body: string | null;
+  response_time_ms: number | null;
+  error_message: string | null;
+  created_at: Date;
+}
+
+// Organization Branding (White-Label)
+export interface OrganizationBranding {
+  id: number;
+  user_id: number;
+  company_name: string | null;
+  logo_url: string | null;
+  logo_light_url: string | null;
+  favicon_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  login_title: string | null;
+  login_subtitle: string | null;
+  footer_text: string | null;
+  custom_domain: string | null;
+  custom_domain_verified: boolean;
+  is_enabled: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// API Token
+export interface ApiToken {
+  id: number;
+  user_id: number;
+  name: string;
+  token_hash: string;
+  token_prefix: string;
+  scopes: string[];
+  rate_limit_per_minute: number;
+  last_used_at: Date | null;
+  total_requests: number;
+  expires_at: Date | null;
+  revoked_at: Date | null;
+  revoke_reason: string | null;
+  created_at: Date;
+}

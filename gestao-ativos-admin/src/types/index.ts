@@ -169,6 +169,26 @@ export interface PlanUsage {
   near_limit: boolean;
 }
 
+// Features JSON do plano (nova estrutura enterprise)
+export interface PlanFeaturesJSON {
+  max_devices?: number;
+  data_retention_days?: number;
+  reports?: boolean;
+  api_access?: boolean;
+  api_access_level?: 'read' | 'read_write';
+  webhooks?: boolean;
+  sso_enabled?: boolean;
+  white_label?: boolean;
+  priority_support?: boolean;
+  remote_access?: boolean;
+  audit_logs?: boolean;
+  dedicated_support?: boolean;
+  sla_guarantee?: boolean;
+  custom_retention?: boolean;
+  alerts?: boolean;
+  geoip?: boolean;
+}
+
 // Planos
 export interface Plan {
   id: number;
@@ -187,6 +207,8 @@ export interface Plan {
   price_yearly_cents: number;
   is_active: boolean;
   is_default: boolean;
+  // Nova estrutura enterprise
+  features?: PlanFeaturesJSON;
 }
 
 // Subscription

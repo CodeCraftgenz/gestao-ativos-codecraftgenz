@@ -3,12 +3,25 @@ import type { Subscription, Plan } from '../types';
 import { plansService } from '../services/plans.service';
 import { useAuth } from './AuthContext';
 
-// Features disponiveis por plano
+// Features disponiveis por plano (atualizado para enterprise)
 export interface PlanFeatures {
+  // Features basicas
   alerts: boolean;
   reports: boolean;
   geoip: boolean;
+  remoteAccess: boolean;
+  auditLogs: boolean;
+  // Enterprise features
   apiAccess: boolean;
+  apiAccessLevel?: 'read' | 'read_write';
+  webhooks: boolean;
+  ssoEnabled: boolean;
+  whiteLabel: boolean;
+  prioritySupport: boolean;
+  dedicatedSupport?: boolean;
+  slaGuarantee?: boolean;
+  customRetention?: boolean;
+  // Limites
   maxDevices: number;
   maxUsers: number;
   maxFiliais: number;
@@ -44,21 +57,35 @@ const defaultFeatures: PlanFeatures = {
   alerts: false,
   reports: false,
   geoip: false,
+  remoteAccess: false,
+  auditLogs: false,
   apiAccess: false,
+  webhooks: false,
+  ssoEnabled: false,
+  whiteLabel: false,
+  prioritySupport: false,
   maxDevices: 5,
   maxUsers: 1,
   maxFiliais: 1,
-  dataRetentionDays: 30,
+  dataRetentionDays: 7,
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 // Mapeia features do plano para nomes amigaveis
 const featureNames: Record<string, string> = {
-  feature_alerts: 'Sistema de Alertas',
-  feature_reports: 'Relatorios Avancados',
-  feature_geoip: 'Localizacao por GeoIP',
-  feature_api_access: 'Acesso a API',
+  alerts: 'Sistema de Alertas',
+  reports: 'Relatorios Avancados',
+  geoip: 'Localizacao por GeoIP',
+  remoteAccess: 'Acesso Remoto',
+  auditLogs: 'Logs de Auditoria',
+  apiAccess: 'Acesso a API',
+  webhooks: 'Webhooks para Integracao',
+  ssoEnabled: 'Single Sign-On (SSO)',
+  whiteLabel: 'Personalizacao (White-Label)',
+  prioritySupport: 'Suporte Prioritario',
+  dedicatedSupport: 'Gerente de Conta Dedicado',
+  slaGuarantee: 'SLA Garantido (99.9%)',
 };
 
 // Mapeia rotas para features necessarias
@@ -67,6 +94,11 @@ const routeFeatureMap: Record<string, keyof PlanFeatures> = {
   '/reports': 'reports',
   '/geoip': 'geoip',
   '/api': 'apiAccess',
+  '/api-access': 'apiAccess',
+  '/webhooks': 'webhooks',
+  '/sso': 'ssoEnabled',
+  '/branding': 'whiteLabel',
+  '/audit-logs': 'auditLogs',
 };
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
@@ -78,17 +110,49 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [upgradeInfo, setUpgradeInfo] = useState<UpgradeInfo | null>(null);
 
-  // Extrai features do plano
+  // Extrai features do plano (suporta JSON features ou campos individuais)
   const extractFeatures = useCallback((planData: Plan): PlanFeatures => {
+    // Se o plano tem campo features JSON (nova estrutura)
+    if (planData.features && typeof planData.features === 'object') {
+      const f = planData.features;
+      return {
+        alerts: f.alerts ?? planData.feature_alerts ?? false,
+        reports: f.reports ?? planData.feature_reports ?? false,
+        geoip: f.geoip ?? planData.feature_geoip ?? false,
+        remoteAccess: f.remote_access ?? true,
+        auditLogs: f.audit_logs ?? false,
+        apiAccess: f.api_access ?? planData.feature_api_access ?? false,
+        apiAccessLevel: f.api_access_level,
+        webhooks: f.webhooks ?? false,
+        ssoEnabled: f.sso_enabled ?? false,
+        whiteLabel: f.white_label ?? false,
+        prioritySupport: f.priority_support ?? false,
+        dedicatedSupport: f.dedicated_support,
+        slaGuarantee: f.sla_guarantee,
+        customRetention: f.custom_retention,
+        maxDevices: f.max_devices ?? planData.max_devices ?? 5,
+        maxUsers: planData.max_users ?? 1,
+        maxFiliais: planData.max_filiais ?? 1,
+        dataRetentionDays: f.data_retention_days ?? planData.data_retention_days ?? 30,
+      };
+    }
+
+    // Fallback para estrutura antiga (campos individuais)
     return {
-      alerts: planData.feature_alerts,
-      reports: planData.feature_reports,
-      geoip: planData.feature_geoip,
-      apiAccess: planData.feature_api_access,
-      maxDevices: planData.max_devices,
-      maxUsers: planData.max_users,
-      maxFiliais: planData.max_filiais,
-      dataRetentionDays: planData.data_retention_days,
+      alerts: planData.feature_alerts ?? false,
+      reports: planData.feature_reports ?? false,
+      geoip: planData.feature_geoip ?? false,
+      remoteAccess: true,
+      auditLogs: false,
+      apiAccess: planData.feature_api_access ?? false,
+      webhooks: false,
+      ssoEnabled: false,
+      whiteLabel: false,
+      prioritySupport: false,
+      maxDevices: planData.max_devices ?? 5,
+      maxUsers: planData.max_users ?? 1,
+      maxFiliais: planData.max_filiais ?? 1,
+      dataRetentionDays: planData.data_retention_days ?? 30,
     };
   }, []);
 
@@ -137,6 +201,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       // Guarda plano anterior para comparacao
       const previousPlan = plan;
+      const previousFeatures = features;
 
       const newSubscription = await plansService.updatePlan(planId);
       setSubscription(newSubscription);
@@ -144,39 +209,49 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       if (newSubscription?.plan) {
         const newPlan = newSubscription.plan;
         setPlan(newPlan);
-        setFeatures(extractFeatures(newPlan));
+        const newFeatures = extractFeatures(newPlan);
+        setFeatures(newFeatures);
 
         // Detecta novas features para mostrar modal
         if (previousPlan && newPlan.price_monthly_cents > previousPlan.price_monthly_cents) {
-          const newFeatures: string[] = [];
+          const gainedFeatures: string[] = [];
 
-          if (!previousPlan.feature_alerts && newPlan.feature_alerts) {
-            newFeatures.push(featureNames.feature_alerts);
-          }
-          if (!previousPlan.feature_reports && newPlan.feature_reports) {
-            newFeatures.push(featureNames.feature_reports);
-          }
-          if (!previousPlan.feature_geoip && newPlan.feature_geoip) {
-            newFeatures.push(featureNames.feature_geoip);
-          }
-          if (!previousPlan.feature_api_access && newPlan.feature_api_access) {
-            newFeatures.push(featureNames.feature_api_access);
+          // Verifica cada feature booleana
+          const booleanFeatures: (keyof PlanFeatures)[] = [
+            'alerts', 'reports', 'geoip', 'remoteAccess', 'auditLogs',
+            'apiAccess', 'webhooks', 'ssoEnabled', 'whiteLabel',
+            'prioritySupport', 'dedicatedSupport', 'slaGuarantee',
+          ];
+
+          booleanFeatures.forEach((key) => {
+            const oldVal = previousFeatures[key];
+            const newVal = newFeatures[key];
+            if (!oldVal && newVal && featureNames[key]) {
+              gainedFeatures.push(featureNames[key]);
+            }
+          });
+
+          // Verifica upgrade de API access level
+          if (newFeatures.apiAccessLevel === 'read_write' && previousFeatures.apiAccessLevel !== 'read_write') {
+            gainedFeatures.push('API com acesso de Leitura e Escrita');
           }
 
           // Adiciona limites aumentados
-          if (newPlan.max_devices > previousPlan.max_devices) {
-            const limit = newPlan.max_devices === 999999 ? 'Ilimitados' : `${newPlan.max_devices}`;
-            newFeatures.push(`Ate ${limit} dispositivos`);
+          if (newFeatures.maxDevices > previousFeatures.maxDevices) {
+            const limit = newFeatures.maxDevices >= 999999 ? 'Ilimitados' : `${newFeatures.maxDevices}`;
+            gainedFeatures.push(`Ate ${limit} dispositivos`);
           }
-          if (newPlan.data_retention_days > previousPlan.data_retention_days) {
-            newFeatures.push(`${newPlan.data_retention_days} dias de retencao de dados`);
+          if (newFeatures.dataRetentionDays > previousFeatures.dataRetentionDays) {
+            const days = newFeatures.dataRetentionDays;
+            const label = days >= 365 ? `${Math.floor(days / 365)} ano(s)` : `${days} dias`;
+            gainedFeatures.push(`${label} de retencao de dados`);
           }
 
-          if (newFeatures.length > 0) {
+          if (gainedFeatures.length > 0) {
             setUpgradeInfo({
               previousPlan: previousPlan.name,
               newPlan: newPlan.name,
-              newFeatures,
+              newFeatures: gainedFeatures,
             });
           }
         }
@@ -187,7 +262,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [plan, extractFeatures]);
+  }, [plan, features, extractFeatures]);
 
   // Cancela subscription
   const cancelSubscription = useCallback(async () => {
@@ -208,6 +283,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     const value = features[feature];
     if (typeof value === 'boolean') return value;
     if (typeof value === 'number') return value > 0;
+    if (typeof value === 'string') return value.length > 0;
     return false;
   }, [features]);
 
