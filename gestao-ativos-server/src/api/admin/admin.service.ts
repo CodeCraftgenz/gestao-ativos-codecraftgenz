@@ -512,6 +512,7 @@ export interface Plan {
   price_yearly_cents: number;
   is_active: boolean;
   is_default: boolean;
+  features?: Record<string, unknown> | null;
 }
 
 export interface Subscription {
@@ -531,31 +532,38 @@ export interface Subscription {
  * Lista todos os planos ativos
  */
 export async function getPlans(): Promise<Plan[]> {
-  const plans = await query<Plan>(`
+  const plans = await query<Plan & { features: string | object | null }>(`
     SELECT
       id, name, slug, description,
       max_devices, max_users, max_filiais,
       feature_alerts, feature_reports, feature_geoip, feature_api_access,
       data_retention_days, price_monthly_cents, price_yearly_cents,
-      is_active, is_default
+      is_active, is_default, features
     FROM plans
     WHERE is_active = TRUE
     ORDER BY price_monthly_cents ASC
   `);
-  return plans;
+
+  // Parse features JSON para cada plano
+  return plans.map(plan => ({
+    ...plan,
+    features: plan.features
+      ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
+      : null
+  }));
 }
 
 /**
  * Busca plano por ID
  */
 export async function getPlanById(id: number): Promise<Plan> {
-  const plan = await queryOne<Plan>(`
+  const plan = await queryOne<Plan & { features: string | object | null }>(`
     SELECT
       id, name, slug, description,
       max_devices, max_users, max_filiais,
       feature_alerts, feature_reports, feature_geoip, feature_api_access,
       data_retention_days, price_monthly_cents, price_yearly_cents,
-      is_active, is_default
+      is_active, is_default, features
     FROM plans
     WHERE id = ?
   `, [id]);
@@ -563,20 +571,26 @@ export async function getPlanById(id: number): Promise<Plan> {
   if (!plan) {
     throw new AppError(404, 'Plano nao encontrado');
   }
-  return plan;
+
+  return {
+    ...plan,
+    features: plan.features
+      ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
+      : null
+  };
 }
 
 /**
  * Busca plano por slug
  */
 export async function getPlanBySlug(slug: string): Promise<Plan> {
-  const plan = await queryOne<Plan>(`
+  const plan = await queryOne<Plan & { features: string | object | null }>(`
     SELECT
       id, name, slug, description,
       max_devices, max_users, max_filiais,
       feature_alerts, feature_reports, feature_geoip, feature_api_access,
       data_retention_days, price_monthly_cents, price_yearly_cents,
-      is_active, is_default
+      is_active, is_default, features
     FROM plans
     WHERE slug = ? AND is_active = TRUE
   `, [slug]);
@@ -584,7 +598,13 @@ export async function getPlanBySlug(slug: string): Promise<Plan> {
   if (!plan) {
     throw new AppError(404, 'Plano nao encontrado');
   }
-  return plan;
+
+  return {
+    ...plan,
+    features: plan.features
+      ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
+      : null
+  };
 }
 
 /**
@@ -594,6 +614,7 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
   const subscription = await queryOne<Subscription & {
     plan_name: string;
     plan_slug: string;
+    plan_description: string | null;
     plan_max_devices: number;
     plan_max_users: number;
     plan_max_filiais: number;
@@ -603,12 +624,14 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
     plan_feature_api_access: boolean;
     plan_data_retention_days: number;
     plan_price_monthly_cents: number;
+    plan_features: string | object | null;
   }>(`
     SELECT
       s.id, s.user_id, s.plan_id, s.status,
       s.started_at, s.expires_at, s.canceled_at, s.trial_ends_at,
       s.external_subscription_id,
       p.name as plan_name, p.slug as plan_slug,
+      p.description as plan_description,
       p.max_devices as plan_max_devices,
       p.max_users as plan_max_users,
       p.max_filiais as plan_max_filiais,
@@ -617,7 +640,8 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
       p.feature_geoip as plan_feature_geoip,
       p.feature_api_access as plan_feature_api_access,
       p.data_retention_days as plan_data_retention_days,
-      p.price_monthly_cents as plan_price_monthly_cents
+      p.price_monthly_cents as plan_price_monthly_cents,
+      p.features as plan_features
     FROM subscriptions s
     INNER JOIN plans p ON s.plan_id = p.id
     WHERE s.user_id = ?
@@ -629,13 +653,25 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
     return null;
   }
 
+  // Parse features JSON se existir
+  let features = null;
+  if (subscription.plan_features) {
+    try {
+      features = typeof subscription.plan_features === 'string'
+        ? JSON.parse(subscription.plan_features)
+        : subscription.plan_features;
+    } catch {
+      features = null;
+    }
+  }
+
   return {
     ...subscription,
     plan: {
       id: subscription.plan_id,
       name: subscription.plan_name,
       slug: subscription.plan_slug,
-      description: null,
+      description: subscription.plan_description,
       max_devices: subscription.plan_max_devices,
       max_users: subscription.plan_max_users,
       max_filiais: subscription.plan_max_filiais,
@@ -648,6 +684,7 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
       price_yearly_cents: 0,
       is_active: true,
       is_default: false,
+      features: features,
     }
   };
 }
