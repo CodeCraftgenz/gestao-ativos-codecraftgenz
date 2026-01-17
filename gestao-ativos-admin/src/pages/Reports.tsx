@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   FileBarChart,
   Download,
@@ -18,6 +18,7 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
+import api from '../services/api';
 
 // Tipos de relatorios disponiveis
 const reportTypes = [
@@ -82,24 +83,14 @@ const categories = [
   { id: 'geral', name: 'Geral' },
 ];
 
-// Mapeamento de rotas para cada relatorio
-const reportRoutes: Record<string, string> = {
-  uptime: '/reports/uptime',
-  activity: '/reports/activity',
-  usage: '/reports/usage',
-  idle: '/reports/idle',
-  users: '/reports/users',
-  inventory: '/reports/inventory',
-  growth: '/reports/growth',
-};
-
 export function Reports() {
   const { hasFeature, plan } = useSubscription();
-  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [dateRange, setDateRange] = useState('7d');
+  const [dateRange, setDateRange] = useState('30d');
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [reportData, setReportData] = useState<unknown>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
 
   // Verifica se o usuario tem acesso a esta feature
   const hasAccess = hasFeature('reports');
@@ -109,20 +100,57 @@ export function Reports() {
     (r) => selectedCategory === 'all' || r.category === selectedCategory
   );
 
+  // Carrega dados do relatorio quando selecionado
+  useEffect(() => {
+    if (selectedReport) {
+      loadReportData(selectedReport);
+    }
+  }, [selectedReport, dateRange]);
+
+  const loadReportData = async (reportId: string) => {
+    setIsLoadingReport(true);
+    try {
+      const response = await api.get(`/api/admin/reports/${reportId}?range=${dateRange}`);
+      if (response.data.success) {
+        setReportData(response.data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar relatorio:', error);
+      setReportData(null);
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
   // Handler para visualizar relatorio
   const handleViewReport = (reportId: string) => {
-    // TODO: Quando as rotas individuais forem implementadas, usar navigate
-    // navigate(reportRoutes[reportId]);
     setSelectedReport(reportId);
   };
 
   // Handler para exportar relatorio
   const handleExportReport = async (reportId: string) => {
     setIsExporting(true);
-    // TODO: Implementar exportacao real via API
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsExporting(false);
-    alert(`Exportacao do relatorio "${reportId}" sera implementada em breve!`);
+    try {
+      const response = await api.get(`/api/admin/reports/${reportId}/export?range=${dateRange}`, {
+        responseType: 'blob',
+      });
+
+      // Criar blob e fazer download
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${reportId}-report-${dateRange}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao exportar relatorio:', error);
+      alert('Erro ao exportar relatorio. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Busca dados do relatorio selecionado
@@ -188,12 +216,12 @@ export function Reports() {
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
                 className="form-select"
+                aria-label="Selecionar periodo do relatorio"
               >
                 <option value="7d">Ultimos 7 dias</option>
                 <option value="15d">Ultimos 15 dias</option>
                 <option value="30d">Ultimos 30 dias</option>
                 <option value="90d">Ultimos 90 dias</option>
-                <option value="custom">Personalizado</option>
               </select>
             </div>
 
@@ -204,6 +232,7 @@ export function Reports() {
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`px-3 py-1 text-sm rounded-full transition-colors ${
                       selectedCategory === cat.id
@@ -237,6 +266,7 @@ export function Reports() {
 
               <div className="mt-4 flex gap-2">
                 <button
+                  type="button"
                   className="btn btn-secondary btn-sm flex-1"
                   onClick={() => handleViewReport(report.id)}
                 >
@@ -244,6 +274,7 @@ export function Reports() {
                   Visualizar
                 </button>
                 <button
+                  type="button"
                   className="btn btn-primary btn-sm flex-1"
                   onClick={() => handleExportReport(report.id)}
                   disabled={isExporting}
@@ -264,7 +295,7 @@ export function Reports() {
           <div>
             <h4 className="font-medium text-blue-900">Formatos de Exportacao</h4>
             <p className="text-sm text-blue-700 mt-1">
-              Os relatorios podem ser exportados em formato CSV, Excel (XLSX) ou PDF.
+              Os relatorios sao exportados em formato CSV para facil importacao em Excel.
               Dados ficam disponiveis por {plan?.data_retention_days || 30} dias conforme seu plano.
             </p>
           </div>
@@ -283,12 +314,12 @@ export function Reports() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">{selectedReportData.name}</h2>
-                  <p className="text-sm text-gray-500">Periodo: {dateRange === '7d' ? 'Ultimos 7 dias' : dateRange === '15d' ? 'Ultimos 15 dias' : dateRange === '30d' ? 'Ultimos 30 dias' : dateRange === '90d' ? 'Ultimos 90 dias' : 'Personalizado'}</p>
+                  <p className="text-sm text-gray-500">Periodo: {dateRange === '7d' ? 'Ultimos 7 dias' : dateRange === '15d' ? 'Ultimos 15 dias' : dateRange === '30d' ? 'Ultimos 30 dias' : 'Ultimos 90 dias'}</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
+                onClick={() => { setSelectedReport(null); setReportData(null); }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Fechar"
                 aria-label="Fechar modal"
@@ -299,14 +330,21 @@ export function Reports() {
 
             {/* Corpo do Modal */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <ReportContent reportId={selectedReport} dateRange={dateRange} />
+              {isLoadingReport ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-primary-600" size={32} />
+                  <span className="ml-3 text-gray-600">Carregando dados...</span>
+                </div>
+              ) : (
+                <ReportContent reportId={selectedReport} data={reportData} />
+              )}
             </div>
 
             {/* Footer do Modal */}
             <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
+                onClick={() => { setSelectedReport(null); setReportData(null); }}
                 className="btn btn-secondary"
               >
                 Fechar
@@ -329,223 +367,379 @@ export function Reports() {
 }
 
 // Componente para renderizar o conteudo de cada relatorio
-function ReportContent({ reportId, dateRange }: { reportId: string; dateRange: string }) {
-  // TODO: Buscar dados reais da API baseado no reportId e dateRange
-
-  const renderPlaceholder = (title: string, description: string) => (
-    <div className="text-center py-12">
-      <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <FileBarChart size={32} className="text-gray-400" />
+function ReportContent({ reportId, data }: { reportId: string; data: unknown }) {
+  if (!data) {
+    return (
+      <div className="text-center py-12">
+        <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <FileBarChart size={32} className="text-gray-400" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Sem dados</h3>
+        <p className="text-gray-500 max-w-md mx-auto">Nenhum dado encontrado para o periodo selecionado.</p>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500 max-w-md mx-auto">{description}</p>
-    </div>
-  );
+    );
+  }
 
   switch (reportId) {
-    case 'uptime':
+    case 'uptime': {
+      const report = data as {
+        summary: { avgUptimePercent: number; avgOnlineHours: number; avgOfflineHours: number; totalDevices: number };
+        devices: Array<{ id: number; hostname: string; serviceTag: string | null; uptimePercent: number; onlineHours: number; offlineHours: number; lastSeen: string | null }>;
+      };
       return (
         <div>
           <div className="mb-4 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-2">Resumo de Uptime</h4>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-4 gap-4 text-center">
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-green-600">98.5%</div>
+                <div className="text-2xl font-bold text-green-600">{report.summary.avgUptimePercent}%</div>
                 <div className="text-sm text-gray-500">Uptime Medio</div>
               </div>
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">42h</div>
+                <div className="text-2xl font-bold text-blue-600">{report.summary.avgOnlineHours}h</div>
                 <div className="text-sm text-gray-500">Tempo Online Medio</div>
               </div>
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-orange-600">2.3h</div>
+                <div className="text-2xl font-bold text-orange-600">{report.summary.avgOfflineHours}h</div>
                 <div className="text-sm text-gray-500">Tempo Offline Medio</div>
               </div>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 text-center">
-            Dados detalhados por dispositivo serao carregados da API em breve.
-          </p>
-        </div>
-      );
-
-    case 'activity':
-      return (
-        <div>
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Atividade no Periodo</h4>
-            <div className="grid grid-cols-4 gap-4 text-center">
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">1,234</div>
-                <div className="text-sm text-gray-500">Heartbeats</div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-green-600">89</div>
-                <div className="text-sm text-gray-500">Logins</div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-purple-600">156</div>
-                <div className="text-sm text-gray-500">Eventos</div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-gray-600">12</div>
+                <div className="text-2xl font-bold text-gray-600">{report.summary.totalDevices}</div>
                 <div className="text-sm text-gray-500">Dispositivos</div>
               </div>
             </div>
           </div>
-          <p className="text-sm text-gray-500 text-center">
-            Grafico de atividade sera implementado em breve.
-          </p>
-        </div>
-      );
-
-    case 'usage':
-      return (
-        <div>
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Uso Medio de Recursos</h4>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">35%</div>
-                <div className="text-sm text-gray-500">CPU Media</div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-purple-600">62%</div>
-                <div className="text-sm text-gray-500">RAM Media</div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-orange-600">45%</div>
-                <div className="text-sm text-gray-500">Disco Medio</div>
-              </div>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 text-center">
-            Dados detalhados por dispositivo serao carregados da API em breve.
-          </p>
-        </div>
-      );
-
-    case 'idle':
-      return (
-        <div>
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Dispositivos Ociosos</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Maquinas com baixa utilizacao de CPU/RAM no periodo selecionado.
-            </p>
-            <div className="space-y-2">
-              {['PC-RECEPCAO', 'NOTEBOOK-SALA3', 'DESKTOP-ADMIN'].map((name, i) => (
-                <div key={name} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                  <span className="font-medium text-gray-900">{name}</span>
-                  <span className="text-sm text-orange-600 font-medium">Score: {90 - i * 10}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 text-center">
-            Lista completa sera carregada da API em breve.
-          </p>
-        </div>
-      );
-
-    case 'users':
-      return (
-        <div>
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Usuarios por Dispositivo</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Historico de logins em cada maquina.
-            </p>
-            <div className="space-y-2">
-              {[
-                { device: 'PC-FINANCEIRO', users: 3, lastUser: 'joao.silva' },
-                { device: 'NOTEBOOK-TI', users: 1, lastUser: 'admin' },
-                { device: 'PC-RH', users: 2, lastUser: 'maria.santos' },
-              ].map((item) => (
-                <div key={item.device} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                  <div>
-                    <span className="font-medium text-gray-900">{item.device}</span>
-                    <span className="text-sm text-gray-500 ml-2">({item.users} usuarios)</span>
-                  </div>
-                  <span className="text-sm text-gray-600">Ultimo: {item.lastUser}</span>
-                </div>
-              ))}
-            </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Service Tag</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Uptime</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Online</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Offline</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-gray-600">{d.serviceTag || '-'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <span className={`font-medium ${d.uptimePercent >= 90 ? 'text-green-600' : d.uptimePercent >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {d.uptimePercent}%
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.onlineHours}h</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.offlineHours}h</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       );
+    }
 
-    case 'inventory':
+    case 'activity': {
+      const report = data as {
+        summary: { totalHeartbeats: number; totalLogins: number; totalLogouts: number; totalBoots: number; totalShutdowns: number; activeDevices: number };
+        dailyActivity: Array<{ date: string; heartbeats: number; logins: number; events: number }>;
+      };
       return (
         <div>
           <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Inventario de Hardware</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Informacoes de hardware coletadas dos dispositivos.
-            </p>
+            <h4 className="font-medium text-gray-900 mb-2">Resumo de Atividade</h4>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.totalHeartbeats.toLocaleString()}</div>
+                <div className="text-sm text-gray-500">Heartbeats</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-green-600">{report.summary.totalLogins}</div>
+                <div className="text-sm text-gray-500">Logins</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">{report.summary.totalLogouts}</div>
+                <div className="text-sm text-gray-500">Logouts</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-purple-600">{report.summary.totalBoots}</div>
+                <div className="text-sm text-gray-500">Boots</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-red-600">{report.summary.totalShutdowns}</div>
+                <div className="text-sm text-gray-500">Shutdowns</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-gray-600">{report.summary.activeDevices}</div>
+                <div className="text-sm text-gray-500">Dispositivos Ativos</div>
+              </div>
+            </div>
+          </div>
+          {report.dailyActivity.length > 0 && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-700">CPU</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-700">RAM</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-700">Disco</th>
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Data</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Heartbeats</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Logins</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Eventos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { device: 'PC-FINANCEIRO', cpu: 'Intel i5-10400', ram: '16 GB', disk: '256 GB SSD' },
-                    { device: 'NOTEBOOK-TI', cpu: 'Intel i7-1165G7', ram: '32 GB', disk: '512 GB NVMe' },
-                    { device: 'PC-RH', cpu: 'AMD Ryzen 5 5600G', ram: '8 GB', disk: '1 TB HDD' },
-                  ].map((item) => (
-                    <tr key={item.device} className="border-b hover:bg-gray-50">
-                      <td className="py-2 px-3 font-medium">{item.device}</td>
-                      <td className="py-2 px-3 text-gray-600">{item.cpu}</td>
-                      <td className="py-2 px-3 text-gray-600">{item.ram}</td>
-                      <td className="py-2 px-3 text-gray-600">{item.disk}</td>
+                  {report.dailyActivity.map((d) => (
+                    <tr key={d.date} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{new Date(d.date).toLocaleDateString('pt-BR')}</td>
+                      <td className="py-2 px-3 text-center text-blue-600">{d.heartbeats}</td>
+                      <td className="py-2 px-3 text-center text-green-600">{d.logins}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.events}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-          <p className="text-sm text-gray-500 text-center">
-            Dados reais serao carregados da API em breve.
-          </p>
+          )}
         </div>
       );
+    }
 
-    case 'growth':
+    case 'usage': {
+      const report = data as {
+        summary: { avgCpuPercent: number; avgRamPercent: number; avgDiskUsedPercent: number };
+        devices: Array<{ id: number; hostname: string; avgCpu: number; avgRam: number; avgDisk: number }>;
+      };
       return (
         <div>
           <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Crescimento do Patio</h4>
-            <div className="grid grid-cols-3 gap-4 text-center mb-4">
+            <h4 className="font-medium text-gray-900 mb-2">Media Geral de Uso</h4>
+            <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">12</div>
+                <div className="text-2xl font-bold text-blue-600">{report.summary.avgCpuPercent}%</div>
+                <div className="text-sm text-gray-500">CPU Media</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-purple-600">{report.summary.avgRamPercent}%</div>
+                <div className="text-sm text-gray-500">RAM Media</div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">{report.summary.avgDiskUsedPercent}%</div>
+                <div className="text-sm text-gray-500">Disco Medio</div>
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">CPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Disco</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-center text-blue-600">{d.avgCpu}%</td>
+                    <td className="py-2 px-3 text-center text-purple-600">{d.avgRam}%</td>
+                    <td className="py-2 px-3 text-center text-orange-600">{d.avgDisk}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    case 'idle': {
+      const report = data as {
+        devices: Array<{ id: number; hostname: string; serviceTag: string | null; avgCpu: number; avgRam: number; idleScore: number; lastActivity: string | null }>;
+      };
+      return (
+        <div>
+          <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h4 className="font-medium text-yellow-800 mb-1">Dispositivos Ociosos</h4>
+            <p className="text-sm text-yellow-700">Maquinas com menos de 20% CPU e 40% RAM no periodo.</p>
+          </div>
+          {report.devices.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">Nenhum dispositivo ocioso encontrado.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">CPU</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Score Ociosidade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.devices.map((d) => (
+                    <tr key={d.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.avgCpu}%</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{d.avgRam}%</td>
+                      <td className="py-2 px-3 text-center">
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                          {d.idleScore}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case 'users': {
+      const report = data as {
+        devices: Array<{ id: number; hostname: string; uniqueUsers: number; lastUser: string | null; lastLoginAt: string | null; users: string[] }>;
+      };
+      return (
+        <div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Usuarios</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Ultimo Usuario</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Lista de Usuarios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium">{d.hostname}</td>
+                    <td className="py-2 px-3 text-center">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {d.uniqueUsers}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-gray-600">{d.lastUser || '-'}</td>
+                    <td className="py-2 px-3 text-gray-500 text-xs">{d.users.join(', ') || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    case 'inventory': {
+      const report = data as {
+        devices: Array<{ id: number; hostname: string; serviceTag: string | null; cpuModel: string | null; cpuCores: number | null; ramTotalGb: number | null; gpuModel: string | null; totalDiskGb: number | null; diskType: string | null; osName: string | null }>;
+      };
+      return (
+        <div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Dispositivo</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">CPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Cores</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">RAM</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">GPU</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Disco</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">SO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.devices.map((d) => (
+                  <tr key={d.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3">
+                      <div className="font-medium">{d.hostname}</div>
+                      {d.serviceTag && <div className="text-xs text-gray-500">{d.serviceTag}</div>}
+                    </td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.cpuModel || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.cpuCores || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">{d.ramTotalGb ? `${d.ramTotalGb} GB` : '-'}</td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.gpuModel || '-'}</td>
+                    <td className="py-2 px-3 text-center text-gray-600">
+                      {d.totalDiskGb ? `${d.totalDiskGb} GB` : '-'}
+                      {d.diskType && <span className="text-xs text-gray-400 ml-1">({d.diskType})</span>}
+                    </td>
+                    <td className="py-2 px-3 text-gray-600 text-xs">{d.osName || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    case 'growth': {
+      const report = data as {
+        summary: { totalDevices: number; newInPeriod: number; growthPercent: number };
+        monthly: Array<{ month: string; total: number; new: number }>;
+      };
+      return (
+        <div>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Resumo de Crescimento</h4>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">{report.summary.totalDevices}</div>
                 <div className="text-sm text-gray-500">Total Atual</div>
               </div>
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-green-600">+3</div>
+                <div className="text-2xl font-bold text-green-600">+{report.summary.newInPeriod}</div>
                 <div className="text-sm text-gray-500">Novos no Periodo</div>
               </div>
               <div className="p-3 bg-white rounded-lg border">
-                <div className="text-2xl font-bold text-purple-600">+33%</div>
+                <div className={`text-2xl font-bold ${report.summary.growthPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {report.summary.growthPercent >= 0 ? '+' : ''}{report.summary.growthPercent}%
+                </div>
                 <div className="text-sm text-gray-500">Crescimento</div>
               </div>
             </div>
           </div>
-          <p className="text-sm text-gray-500 text-center">
-            Grafico de evolucao sera implementado em breve.
-          </p>
+          {report.monthly.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-gray-700">Mes</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Total</th>
+                    <th className="text-center py-2 px-3 font-medium text-gray-700">Novos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.monthly.map((m) => (
+                    <tr key={m.month} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{m.month}</td>
+                      <td className="py-2 px-3 text-center text-gray-600">{m.total}</td>
+                      <td className="py-2 px-3 text-center text-green-600">+{m.new}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       );
+    }
 
     default:
-      return renderPlaceholder(
-        'Relatorio em Desenvolvimento',
-        'Este relatorio ainda esta sendo implementado. Em breve estara disponivel.'
+      return (
+        <div className="text-center py-12">
+          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <FileBarChart size={32} className="text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Relatorio em Desenvolvimento</h3>
+          <p className="text-gray-500 max-w-md mx-auto">Este relatorio ainda esta sendo implementado.</p>
+        </div>
       );
   }
 }

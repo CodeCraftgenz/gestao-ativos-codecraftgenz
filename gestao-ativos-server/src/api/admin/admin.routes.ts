@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import * as adminController from './admin.controller.js';
+import * as reportsController from './reports.controller.js';
 
 const router = Router();
 
@@ -34,5 +35,23 @@ router.get('/plans/:id', adminController.getPlanById);
 router.get('/subscription', adminController.getMySubscription);
 router.put('/subscription', adminController.updateMyPlan);
 router.delete('/subscription', adminController.cancelMySubscription);
+
+// Relatorios - Visualizacao
+router.get('/reports/uptime', reportsController.getUptimeReport);
+router.get('/reports/activity', reportsController.getActivityReport);
+router.get('/reports/usage', reportsController.getUsageReport);
+router.get('/reports/idle', reportsController.getIdleReport);
+router.get('/reports/users', reportsController.getUsersReport);
+router.get('/reports/inventory', reportsController.getInventoryReport);
+router.get('/reports/growth', reportsController.getGrowthReport);
+
+// Relatorios - Exportacao CSV
+router.get('/reports/uptime/export', reportsController.exportUptimeCSV);
+router.get('/reports/activity/export', reportsController.exportActivityCSV);
+router.get('/reports/usage/export', reportsController.exportUsageCSV);
+router.get('/reports/idle/export', reportsController.exportIdleCSV);
+router.get('/reports/users/export', reportsController.exportUsersCSV);
+router.get('/reports/inventory/export', reportsController.exportInventoryCSV);
+router.get('/reports/growth/export', reportsController.exportGrowthCSV);
 
 export default router;
