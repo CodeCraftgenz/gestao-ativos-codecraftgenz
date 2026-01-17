@@ -11,7 +11,6 @@ interface DeviceRow {
   device_id: string;
   hostname: string;
   status: DeviceStatus;
-  block_reason: string | null;
 }
 
 interface CredentialRow {
@@ -117,7 +116,7 @@ export async function agentAuthMiddleware(
     });
 
     const devices = await query<DeviceRow>(
-      `SELECT d.id, d.device_id, d.hostname, d.status, d.block_reason
+      `SELECT d.id, d.device_id, d.hostname, d.status
        FROM devices d
        INNER JOIN device_credentials dc ON dc.device_id = d.id
        WHERE d.id = ?
@@ -205,11 +204,10 @@ export async function agentAuthMiddleware(
         deviceInternalId: device.id,
         deviceId: device.device_id,
         hostname: device.hostname,
-        blockReason: device.block_reason,
         clientIp,
         endpoint,
       });
-      throw new DeviceBlockedError(device.block_reason ?? undefined);
+      throw new DeviceBlockedError();
     }
 
     // CENARIO 5: Device pendente de aprovacao
