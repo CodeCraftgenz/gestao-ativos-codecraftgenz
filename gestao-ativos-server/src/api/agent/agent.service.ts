@@ -385,8 +385,8 @@ export async function processHeartbeat(
     ]
   );
 
-  // Atualiza metricas diarias
-  await updateDailyMetrics(deviceInternalId, data.current_user);
+  // TODO: Criar tabela device_daily_metrics no banco de producao
+  // await updateDailyMetrics(deviceInternalId, data.current_user);
 
   // Verifica se ha comandos pendentes
   const pendingCount = await queryOne<{ count: number }>(
