@@ -3,24 +3,34 @@ import type { Subscription, Plan } from '../types';
 import { plansService } from '../services/plans.service';
 import { useAuth } from './AuthContext';
 
-// Features disponiveis por plano (atualizado para enterprise)
+// =============================================================================
+// PLAN FEATURES - Features disponiveis por plano
+// =============================================================================
+
 export interface PlanFeatures {
   // Features basicas
   alerts: boolean;
   reports: boolean;
   geoip: boolean;
   remoteAccess: boolean;
+
+  // Features avancadas (Profissional+)
   auditLogs: boolean;
-  // Enterprise features
+  auditLogExport: boolean;
+  shadowItAlert: boolean;
   apiAccess: boolean;
   apiAccessLevel?: 'read' | 'read_write';
+
+  // Features enterprise (Empresarial)
   webhooks: boolean;
   ssoEnabled: boolean;
   whiteLabel: boolean;
+  msiInstaller: boolean;
   prioritySupport: boolean;
   dedicatedSupport?: boolean;
   slaGuarantee?: boolean;
   customRetention?: boolean;
+
   // Limites
   maxDevices: number;
   maxUsers: number;
@@ -54,16 +64,23 @@ interface SubscriptionContextType {
 }
 
 const defaultFeatures: PlanFeatures = {
+  // Features basicas
   alerts: false,
   reports: false,
   geoip: false,
   remoteAccess: false,
+  // Features avancadas
   auditLogs: false,
+  auditLogExport: false,
+  shadowItAlert: false,
   apiAccess: false,
+  // Features enterprise
   webhooks: false,
   ssoEnabled: false,
   whiteLabel: false,
+  msiInstaller: false,
   prioritySupport: false,
+  // Limites
   maxDevices: 5,
   maxUsers: 1,
   maxFiliais: 1,
@@ -74,15 +91,21 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 // Mapeia features do plano para nomes amigaveis
 const featureNames: Record<string, string> = {
+  // Features basicas
   alerts: 'Sistema de Alertas',
   reports: 'Relatorios Avancados',
   geoip: 'Localizacao por GeoIP',
   remoteAccess: 'Acesso Remoto',
+  // Features avancadas
   auditLogs: 'Logs de Auditoria',
+  auditLogExport: 'Exportacao de Logs de Auditoria',
+  shadowItAlert: 'Deteccao de Shadow IT',
   apiAccess: 'Acesso a API',
+  // Features enterprise
   webhooks: 'Webhooks para Integracao',
   ssoEnabled: 'Single Sign-On (SSO)',
   whiteLabel: 'Personalizacao (White-Label)',
+  msiInstaller: 'Instalador MSI Customizado',
   prioritySupport: 'Suporte Prioritario',
   dedicatedSupport: 'Gerente de Conta Dedicado',
   slaGuarantee: 'SLA Garantido (99.9%)',
@@ -95,10 +118,13 @@ const routeFeatureMap: Record<string, keyof PlanFeatures> = {
   '/geoip': 'geoip',
   '/api': 'apiAccess',
   '/api-access': 'apiAccess',
+  '/api-tokens': 'apiAccess',
   '/webhooks': 'webhooks',
   '/sso': 'ssoEnabled',
   '/branding': 'whiteLabel',
   '/audit-logs': 'auditLogs',
+  '/shadow-it': 'shadowItAlert',
+  '/security': 'shadowItAlert',
 };
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
@@ -116,20 +142,27 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (planData.features && typeof planData.features === 'object') {
       const f = planData.features;
       return {
+        // Features basicas
         alerts: f.alerts ?? planData.feature_alerts ?? false,
         reports: f.reports ?? planData.feature_reports ?? false,
         geoip: f.geoip ?? planData.feature_geoip ?? false,
         remoteAccess: f.remote_access ?? true,
+        // Features avancadas
         auditLogs: f.audit_logs ?? false,
+        auditLogExport: f.audit_log_export ?? false,
+        shadowItAlert: f.shadow_it_alert ?? false,
         apiAccess: f.api_access ?? planData.feature_api_access ?? false,
         apiAccessLevel: f.api_access_level,
+        // Features enterprise
         webhooks: f.webhooks ?? false,
         ssoEnabled: f.sso_enabled ?? false,
         whiteLabel: f.white_label ?? false,
+        msiInstaller: f.msi_installer ?? false,
         prioritySupport: f.priority_support ?? false,
         dedicatedSupport: f.dedicated_support,
         slaGuarantee: f.sla_guarantee,
         customRetention: f.custom_retention,
+        // Limites
         maxDevices: f.max_devices ?? planData.max_devices ?? 5,
         maxUsers: planData.max_users ?? 1,
         maxFiliais: planData.max_filiais ?? 1,
@@ -139,16 +172,23 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     // Fallback para estrutura antiga (campos individuais)
     return {
+      // Features basicas
       alerts: planData.feature_alerts ?? false,
       reports: planData.feature_reports ?? false,
       geoip: planData.feature_geoip ?? false,
       remoteAccess: true,
+      // Features avancadas
       auditLogs: false,
+      auditLogExport: false,
+      shadowItAlert: false,
       apiAccess: planData.feature_api_access ?? false,
+      // Features enterprise
       webhooks: false,
       ssoEnabled: false,
       whiteLabel: false,
+      msiInstaller: false,
       prioritySupport: false,
+      // Limites
       maxDevices: planData.max_devices ?? 5,
       maxUsers: planData.max_users ?? 1,
       maxFiliais: planData.max_filiais ?? 1,
@@ -218,8 +258,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
           // Verifica cada feature booleana
           const booleanFeatures: (keyof PlanFeatures)[] = [
-            'alerts', 'reports', 'geoip', 'remoteAccess', 'auditLogs',
-            'apiAccess', 'webhooks', 'ssoEnabled', 'whiteLabel',
+            // Features basicas
+            'alerts', 'reports', 'geoip', 'remoteAccess',
+            // Features avancadas
+            'auditLogs', 'auditLogExport', 'shadowItAlert', 'apiAccess',
+            // Features enterprise
+            'webhooks', 'ssoEnabled', 'whiteLabel', 'msiInstaller',
             'prioritySupport', 'dedicatedSupport', 'slaGuarantee',
           ];
 

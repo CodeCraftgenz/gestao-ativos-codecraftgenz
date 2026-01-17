@@ -1,50 +1,21 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../contexts/SubscriptionContext';
+import { useSubscription, type PlanFeatures } from '../contexts/SubscriptionContext';
 import { UpgradeWelcomeModal } from './UpgradeWelcomeModal';
 import {
-  LayoutDashboard,
-  Monitor,
-  Clock,
-  Settings,
   LogOut,
   Menu,
   Cpu,
   ChevronRight,
-  PlusCircle,
-  Bell,
-  CreditCard,
-  Shield,
-  FileBarChart,
-  MapPin,
-  Code,
   Lock,
   Crown,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { menuSections, pageNames, type NavItem } from '../config/menuConfig';
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: React.ElementType;
-  feature?: 'alerts' | 'reports' | 'geoip' | 'apiAccess';
-  badge?: string | number;
-  badgeColor?: string;
-}
-
-const pageNames: Record<string, string> = {
-  '/': 'Dashboard',
-  '/devices': 'Dispositivos',
-  '/register': 'Registrar Dispositivo',
-  '/pending': 'Pendentes',
-  '/alerts': 'Alertas',
-  '/reports': 'Relatorios',
-  '/geoip': 'Localizacao',
-  '/api': 'API',
-  '/plans': 'Planos',
-  '/privacy': 'Privacidade LGPD',
-  '/settings': 'Configuracoes',
-};
+// =============================================================================
+// LAYOUT COMPONENT
+// =============================================================================
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -58,92 +29,52 @@ export function Layout() {
     navigate('/login');
   };
 
-  // Menu principal dinamico baseado nas features do plano
-  const navigation = useMemo((): NavItem[] => {
-    const items: NavItem[] = [
-      { name: 'Painel', href: '/', icon: LayoutDashboard },
-      { name: 'Dispositivos', href: '/devices', icon: Monitor },
-      { name: 'Registrar', href: '/register', icon: PlusCircle },
-      { name: 'Pendentes', href: '/pending', icon: Clock, badge: 0 },
-    ];
-
-    // Alertas - requer feature_alerts
-    items.push({
-      name: 'Alertas',
-      href: '/alerts',
-      icon: Bell,
-      feature: 'alerts',
-      badge: '!',
-      badgeColor: 'bg-red-500',
-    });
-
-    // Relatorios - requer feature_reports
-    items.push({
-      name: 'Relatorios',
-      href: '/reports',
-      icon: FileBarChart,
-      feature: 'reports',
-    });
-
-    // GeoIP/Localizacao - requer feature_geoip
-    items.push({
-      name: 'Localizacao',
-      href: '/geoip',
-      icon: MapPin,
-      feature: 'geoip',
-    });
-
-    // API - requer feature_api_access
-    items.push({
-      name: 'API',
-      href: '/api',
-      icon: Code,
-      feature: 'apiAccess',
-    });
-
-    return items;
+  // Filtra secoes do menu (remove secoes vazias apos filtrar items invisiveis)
+  const visibleSections = useMemo(() => {
+    return menuSections
+      .map((section) => ({
+        ...section,
+        // Mantem todos os items, mas marca se estao bloqueados
+        // Futuramente pode-se adicionar logica para esconder items de admin
+        items: section.items,
+      }))
+      .filter((section) => section.items.length > 0);
   }, []);
 
-  // Menu de configuracoes
-  const settingsNav: NavItem[] = [
-    { name: 'Planos', href: '/plans', icon: CreditCard },
-    { name: 'Privacidade', href: '/privacy', icon: Shield },
-    { name: 'Configuracoes', href: '/settings', icon: Settings },
-  ];
-
   const currentPage = pageNames[location.pathname] || 'Dashboard';
-  const userInitials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'AD';
+  const userInitials = user?.name?.split(' ').map((n) => n[0]).join('').toUpperCase() || 'AD';
 
-  // Renderiza item de navegacao
+  // Renderiza item de navegacao com Feature Guard
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.href;
-    const isLocked = item.feature && !hasFeature(item.feature);
+    const isLocked = item.requiredFeature && !hasFeature(item.requiredFeature as keyof PlanFeatures);
 
-    // Se esta bloqueado, mostra com cadeado
+    // Se esta bloqueado, mostra com cadeado e redireciona para planos
     if (isLocked) {
       return (
         <Link
-          key={item.name}
+          key={item.id}
           to="/plans"
           onClick={() => setSidebarOpen(false)}
           className="sidebar-link locked"
-          title={`Disponivel nos planos superiores - Clique para fazer upgrade`}
+          title={`Disponivel a partir do plano ${item.minPlan || 'superior'} - Clique para fazer upgrade`}
         >
-          <item.icon />
+          <item.icon size={20} />
           <span>{item.name}</span>
           <Lock size={14} className="ml-auto text-gray-400" />
         </Link>
       );
     }
 
+    // Item normal (desbloqueado)
     return (
       <Link
-        key={item.name}
+        key={item.id}
         to={item.href}
         onClick={() => setSidebarOpen(false)}
         className={`sidebar-link ${isActive ? 'active' : ''}`}
       >
-        <item.icon />
+        <item.icon size={20} />
         <span>{item.name}</span>
         {item.badge !== undefined && (
           <span className={`sidebar-badge ${item.badgeColor || ''}`}>
@@ -197,13 +128,16 @@ export function Layout() {
           </div>
         )}
 
-        {/* Navigation */}
+        {/* Navigation - Renderiza secoes dinamicamente */}
         <nav className="sidebar-nav">
-          <div className="sidebar-section-title">Menu Principal</div>
-          {navigation.map(renderNavItem)}
-
-          <div className="sidebar-section-title mt-6">Configuracoes</div>
-          {settingsNav.map(renderNavItem)}
+          {visibleSections.map((section, index) => (
+            <div key={section.title}>
+              <div className={`sidebar-section-title ${index > 0 ? 'mt-6' : ''}`}>
+                {section.title}
+              </div>
+              {section.items.map(renderNavItem)}
+            </div>
+          ))}
         </nav>
 
         {/* User Footer */}
@@ -217,6 +151,7 @@ export function Layout() {
               <div className="sidebar-user-role">{user?.role || 'Admin'}</div>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
               className="sidebar-logout"
               title="Sair do sistema"

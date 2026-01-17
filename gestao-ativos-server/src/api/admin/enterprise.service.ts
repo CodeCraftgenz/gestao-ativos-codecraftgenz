@@ -591,14 +591,22 @@ export async function getPlanFeatures(userId: number): Promise<PlanFeatures | nu
     return {
       max_devices: 5,
       data_retention_days: 7,
+      // Features basicas
       reports: false,
+      alerts: false,
+      geoip: false,
+      remote_access: false,
+      // Features avancadas
       api_access: false,
+      audit_logs: false,
+      audit_log_export: false,
+      shadow_it_alert: false,
+      // Features enterprise
       webhooks: false,
       sso_enabled: false,
       white_label: false,
+      msi_installer: false,
       priority_support: false,
-      remote_access: false,
-      audit_logs: false,
     };
   }
 
@@ -611,14 +619,22 @@ export async function getPlanFeatures(userId: number): Promise<PlanFeatures | nu
   return {
     max_devices: row.max_devices,
     data_retention_days: row.data_retention_days,
+    // Features basicas
     reports: true,
+    alerts: true,
+    geoip: true,
+    remote_access: true,
+    // Features avancadas
     api_access: false,
+    audit_logs: false,
+    audit_log_export: false,
+    shadow_it_alert: false,
+    // Features enterprise
     webhooks: false,
     sso_enabled: false,
     white_label: false,
+    msi_installer: false,
     priority_support: false,
-    remote_access: true,
-    audit_logs: false,
   };
 }
 

@@ -169,25 +169,47 @@ export interface PlanUsage {
   near_limit: boolean;
 }
 
-// Features JSON do plano (nova estrutura enterprise)
+// =============================================================================
+// FEATURE FLAGS (Estrutura JSON na coluna features da tabela plans)
+// =============================================================================
+
+/**
+ * Feature Flags do Plano
+ * Estrutura JSON persistida na coluna `features` da tabela `plans`
+ */
 export interface PlanFeaturesJSON {
+  // Limites
   max_devices?: number;
   data_retention_days?: number;
+
+  // Features basicas
   reports?: boolean;
+  alerts?: boolean;
+  geoip?: boolean;
+  remote_access?: boolean;
+
+  // Features avancadas (Profissional+)
   api_access?: boolean;
   api_access_level?: 'read' | 'read_write';
+  audit_logs?: boolean;
+  audit_log_export?: boolean;
+  shadow_it_alert?: boolean;
+
+  // Features enterprise (Empresarial)
   webhooks?: boolean;
   sso_enabled?: boolean;
   white_label?: boolean;
+  msi_installer?: boolean;
   priority_support?: boolean;
-  remote_access?: boolean;
-  audit_logs?: boolean;
   dedicated_support?: boolean;
   sla_guarantee?: boolean;
   custom_retention?: boolean;
-  alerts?: boolean;
-  geoip?: boolean;
 }
+
+/**
+ * Chaves de features que podem ser verificadas no frontend
+ */
+export type PlanFeatureKey = keyof PlanFeaturesJSON;
 
 // Planos
 export interface Plan {
