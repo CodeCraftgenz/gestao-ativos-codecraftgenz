@@ -782,3 +782,140 @@ export async function createFreeSubscription(userId: number): Promise<void> {
   }
 }
 
+// ============================================================================
+// LOGS DE AUDITORIA
+// ============================================================================
+
+export interface AuditLog {
+  id: number;
+  user_id: number | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: Date;
+  // Dados do usuario que executou a acao (join)
+  user_email?: string;
+  user_name?: string;
+}
+
+export interface AuditLogFilters {
+  action?: string;
+  entity_type?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Busca logs de auditoria filtrando pelo user_id da organizacao
+ * LGPD Compliance: Garante isolamento de dados entre clientes
+ */
+export async function getAuditLogs(userId: number, filters: AuditLogFilters = {}): Promise<{
+  data: AuditLog[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}> {
+  const { action, entity_type, startDate, endDate, page = 1, limit = 50 } = filters;
+  const offset = (page - 1) * limit;
+
+  // Constroi clausula WHERE com filtro obrigatorio por user_id
+  let whereClause = 'al.user_id = ?';
+  const params: (string | number)[] = [userId];
+
+  if (action) {
+    whereClause += ' AND al.action = ?';
+    params.push(action);
+  }
+
+  if (entity_type) {
+    whereClause += ' AND al.entity_type = ?';
+    params.push(entity_type);
+  }
+
+  if (startDate) {
+    whereClause += ' AND al.created_at >= ?';
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    whereClause += ' AND al.created_at <= ?';
+    params.push(endDate);
+  }
+
+  // Conta total de registros
+  const countResult = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) as total FROM audit_logs al WHERE ${whereClause}`,
+    params
+  );
+  const total = countResult?.total || 0;
+
+  // Busca logs com JOIN no usuario
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+
+  const logs = await query<AuditLog>(
+    `SELECT
+      al.id, al.user_id, al.action, al.entity_type, al.entity_id,
+      al.old_values, al.new_values, al.ip_address, al.user_agent, al.created_at,
+      u.email as user_email, u.name as user_name
+    FROM audit_logs al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE ${whereClause}
+    ORDER BY al.created_at DESC
+    LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+    params
+  );
+
+  // Parse JSON fields
+  const parsedLogs = logs.map(log => ({
+    ...log,
+    old_values: log.old_values
+      ? (typeof log.old_values === 'string' ? JSON.parse(log.old_values) : log.old_values)
+      : null,
+    new_values: log.new_values
+      ? (typeof log.new_values === 'string' ? JSON.parse(log.new_values) : log.new_values)
+      : null,
+  }));
+
+  return {
+    data: parsedLogs,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit),
+    },
+  };
+}
+
+/**
+ * Retorna tipos de acoes disponiveis nos logs do usuario
+ */
+export async function getAuditLogActions(userId: number): Promise<string[]> {
+  const result = await query<{ action: string }>(
+    `SELECT DISTINCT action FROM audit_logs WHERE user_id = ? ORDER BY action`,
+    [userId]
+  );
+  return result.map(r => r.action);
+}
+
+/**
+ * Retorna tipos de entidades disponiveis nos logs do usuario
+ */
+export async function getAuditLogEntityTypes(userId: number): Promise<string[]> {
+  const result = await query<{ entity_type: string }>(
+    `SELECT DISTINCT entity_type FROM audit_logs WHERE user_id = ? ORDER BY entity_type`,
+    [userId]
+  );
+  return result.map(r => r.entity_type);
+}
+

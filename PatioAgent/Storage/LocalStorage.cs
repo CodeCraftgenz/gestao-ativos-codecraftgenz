@@ -87,6 +87,12 @@ public class LocalStorage
         _config.Status = EnrollmentStatus.NotEnrolled;
         Save();
     }
+
+    public void UpdateLastScreenshotAt()
+    {
+        _config.LastScreenshotAt = DateTime.UtcNow;
+        Save();
+    }
 }
 
 public class AgentConfig
@@ -101,6 +107,8 @@ public class AgentConfig
     public DateTime? LastHeartbeatAt { get; set; }
     public DateTime? LastEventSentAt { get; set; }
     public DateTime? LastInventoryAt { get; set; }
+    public DateTime? LastScreenshotAt { get; set; }
+    public int ScreenshotIntervalSeconds { get; set; } = 600; // 10 minutos
 }
 
 public enum EnrollmentStatus

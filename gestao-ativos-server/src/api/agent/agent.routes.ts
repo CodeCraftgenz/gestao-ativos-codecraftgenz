@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { agentAuthMiddleware } from '../../middleware/agentAuth.middleware.js';
 import { agentRateLimiter, enrollmentRateLimiter } from '../../middleware/rateLimit.middleware.js';
+import { screenshotUpload } from '../../config/upload.js';
 import {
   enroll,
   getEnrollStatus,
@@ -11,6 +12,7 @@ import {
   postEvents,
   snapshot,
   activityEvents,
+  uploadScreenshot,
 } from './agent.controller.js';
 
 const router = Router();
@@ -50,5 +52,15 @@ router.post('/snapshot', agentRateLimiter, agentAuthMiddleware, snapshot);
 // POST /api/agent/activity - Envia eventos de atividade (boot/shutdown/login/logout)
 // ENDPOINT PRINCIPAL para o Patio de Controle
 router.post('/activity', agentRateLimiter, agentAuthMiddleware, activityEvents);
+
+// POST /api/agent/screenshot - Upload de screenshot para auditoria de produtividade
+// Requer multipart/form-data com campo 'screenshot'
+router.post(
+  '/screenshot',
+  agentRateLimiter,
+  agentAuthMiddleware,
+  screenshotUpload.single('screenshot'),
+  uploadScreenshot
+);
 
 export default router;

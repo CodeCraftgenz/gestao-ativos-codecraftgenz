@@ -178,6 +178,76 @@ public class ApiClient
             return new ApiResponse<T> { Success = false, Error = ex.Message };
         }
     }
+
+    /// <summary>
+    /// Envia screenshot para o servidor usando multipart/form-data
+    /// </summary>
+    public async Task<bool> UploadScreenshotAsync(
+        byte[] imageData,
+        string? loggedUser,
+        int screenWidth,
+        int screenHeight)
+    {
+        var correlationId = GenerateCorrelationId();
+
+        try
+        {
+            var url = $"{_storage.Config.ServerUrl}/api/agent/screenshot";
+            SetAuthHeader(correlationId);
+
+            using var content = new MultipartFormDataContent();
+
+            // Adiciona a imagem JPEG
+            var imageContent = new ByteArrayContent(imageData);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            content.Add(imageContent, "screenshot", $"screenshot_{DateTime.UtcNow:yyyyMMdd_HHmmss}.jpg");
+
+            // Adiciona metadados
+            if (!string.IsNullOrEmpty(loggedUser))
+                content.Add(new StringContent(loggedUser), "logged_user");
+
+            content.Add(new StringContent(screenWidth.ToString()), "screen_width");
+            content.Add(new StringContent(screenHeight.ToString()), "screen_height");
+            content.Add(new StringContent(DateTime.UtcNow.ToString("o")), "captured_at");
+
+            Log.Debug("POST Screenshot {Url} [cid={CorrelationId}] - Size: {Size} KB",
+                url, correlationId, imageData.Length / 1024);
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Debug("Screenshot uploaded successfully [cid={CorrelationId}]", correlationId);
+                return true;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Log.Warning("Screenshot upload unauthorized [cid={CorrelationId}]", correlationId);
+                return false;
+            }
+
+            Log.Warning("Screenshot upload failed [cid={CorrelationId}]: {Status} - {Body}",
+                correlationId, response.StatusCode, responseBody);
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Error(ex, "Network error uploading screenshot [cid={CorrelationId}]", correlationId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            Log.Error(ex, "Screenshot upload timeout [cid={CorrelationId}]", correlationId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected error uploading screenshot [cid={CorrelationId}]", correlationId);
+            return false;
+        }
+    }
 }
 
 public class ApiWrapper<T>

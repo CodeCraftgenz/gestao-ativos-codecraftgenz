@@ -876,3 +876,70 @@ export async function processActivityEvents(
 
   return { received: savedCount };
 }
+
+// =============================================================================
+// SCREENSHOT SERVICE
+// =============================================================================
+
+export interface ScreenshotRequest {
+  logged_user?: string;
+  screen_width?: number;
+  screen_height?: number;
+  captured_at?: string;
+}
+
+export interface ScreenshotResponse {
+  id: number;
+  storage_path: string;
+}
+
+/**
+ * Processa upload de screenshot do dispositivo
+ * Salva metadados no banco e retorna ID
+ */
+export async function processScreenshot(
+  deviceInternalId: number,
+  file: Express.Multer.File,
+  metadata: ScreenshotRequest,
+  relativePath: string
+): Promise<ScreenshotResponse> {
+  // Busca user_id do dispositivo para isolamento multi-tenant
+  const device = await queryOne<{ user_id: number; device_id: string }>(
+    `SELECT user_id, device_id FROM devices WHERE id = ?`,
+    [deviceInternalId]
+  );
+
+  if (!device) {
+    throw new NotFoundError('Dispositivo nao encontrado');
+  }
+
+  // Insere metadados no banco
+  const screenshotId = await insert(
+    `INSERT INTO device_screenshots
+      (device_id, user_id, storage_path, file_size_bytes, mime_type,
+       logged_user, screen_width, screen_height, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      deviceInternalId,
+      device.user_id,
+      relativePath,
+      file.size,
+      file.mimetype,
+      metadata.logged_user ?? null,
+      metadata.screen_width ?? null,
+      metadata.screen_height ?? null,
+      metadata.captured_at ? new Date(metadata.captured_at) : new Date(),
+    ]
+  );
+
+  logAgentActivity(device.device_id, 'SCREENSHOT_UPLOAD', {
+    screenshotId,
+    fileSize: file.size,
+    loggedUser: metadata.logged_user,
+  });
+
+  return {
+    id: screenshotId,
+    storage_path: relativePath,
+  };
+}

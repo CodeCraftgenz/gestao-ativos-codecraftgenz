@@ -262,3 +262,50 @@ export async function cancelMySubscription(req: AuthenticatedRequest, res: Respo
     next(error);
   }
 }
+
+// ============================================================================
+// LOGS DE AUDITORIA
+// ============================================================================
+
+// Lista logs de auditoria do usuario
+export async function getAuditLogs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+
+    const filters = {
+      action: req.query.action as string | undefined,
+      entity_type: req.query.entity_type as string | undefined,
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+    };
+
+    const result = await adminService.getAuditLogs(userId, filters);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Lista acoes disponiveis nos logs
+export async function getAuditLogActions(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const actions = await adminService.getAuditLogActions(userId);
+    res.json({ success: true, data: actions });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Lista tipos de entidade disponiveis nos logs
+export async function getAuditLogEntityTypes(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const entityTypes = await adminService.getAuditLogEntityTypes(userId);
+    res.json({ success: true, data: entityTypes });
+  } catch (error) {
+    next(error);
+  }
+}

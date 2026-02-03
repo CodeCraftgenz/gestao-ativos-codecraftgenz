@@ -19,8 +19,10 @@ import {
   saveEvents,
   processSnapshot,
   processActivityEvents,
+  processScreenshot,
 } from './agent.service.js';
 import { ValidationError } from '../../middleware/error.middleware.js';
+import { getRelativePath } from '../../config/upload.js';
 
 // =============================================================================
 // ENROLLMENT
@@ -330,6 +332,57 @@ export async function activityEvents(
     res.json({
       success: true,
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =============================================================================
+// SCREENSHOT (Captura de Tela para Auditoria)
+// =============================================================================
+
+/**
+ * POST /api/agent/screenshot
+ * Recebe screenshot capturado pelo agente
+ * Requer upload multipart/form-data
+ */
+export async function uploadScreenshot(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.device) {
+      throw new ValidationError('Dispositivo nao autenticado');
+    }
+
+    if (!req.file) {
+      throw new ValidationError('Arquivo de screenshot nao enviado');
+    }
+
+    // Metadados do screenshot (enviados como campos do form)
+    const metadata = {
+      logged_user: req.body.logged_user as string | undefined,
+      screen_width: req.body.screen_width ? parseInt(req.body.screen_width, 10) : undefined,
+      screen_height: req.body.screen_height ? parseInt(req.body.screen_height, 10) : undefined,
+      captured_at: req.body.captured_at as string | undefined,
+    };
+
+    // Calcula path relativo para salvar no banco
+    const relativePath = getRelativePath(req.file.path);
+
+    const result = await processScreenshot(
+      req.device.id,
+      req.file,
+      metadata,
+      relativePath
+    );
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: 'Screenshot recebido com sucesso',
     });
   } catch (error) {
     next(error);

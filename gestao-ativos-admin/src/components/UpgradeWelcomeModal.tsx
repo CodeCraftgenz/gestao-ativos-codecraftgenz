@@ -27,8 +27,11 @@ export function UpgradeWelcomeModal({ upgradeInfo, onClose }: UpgradeWelcomeModa
 
           {/* Botao fechar */}
           <button
+            type="button"
             onClick={onClose}
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+            title="Fechar modal"
+            aria-label="Fechar modal"
           >
             <X size={24} />
           </button>

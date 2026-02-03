@@ -14,6 +14,7 @@ public class PatioWorker : BackgroundService
     private readonly EnrollmentService _enrollmentService;
     private readonly EventCollector _eventCollector;
     private readonly InventoryCollector _inventoryCollector;
+    private readonly ScreenshotCollector _screenshotCollector;
 
     // Intervalos
     private readonly TimeSpan _heartbeatInterval = TimeSpan.FromMinutes(5);
@@ -30,12 +31,14 @@ public class PatioWorker : BackgroundService
         LocalStorage storage,
         EnrollmentService enrollmentService,
         EventCollector eventCollector,
-        InventoryCollector inventoryCollector)
+        InventoryCollector inventoryCollector,
+        ScreenshotCollector screenshotCollector)
     {
         _storage = storage;
         _enrollmentService = enrollmentService;
         _eventCollector = eventCollector;
         _inventoryCollector = inventoryCollector;
+        _screenshotCollector = screenshotCollector;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -192,6 +195,17 @@ public class PatioWorker : BackgroundService
             if (now - lastInventory >= inventoryInterval)
             {
                 await _inventoryCollector.CollectAndSendInventoryAsync();
+            }
+        }
+
+        // Verifica se deve capturar screenshot (apenas se ainda aprovado)
+        if (_storage.Config.Status == EnrollmentStatus.Approved)
+        {
+            var lastScreenshot = _storage.Config.LastScreenshotAt ?? DateTime.MinValue;
+            var screenshotInterval = TimeSpan.FromSeconds(_storage.Config.ScreenshotIntervalSeconds);
+            if (now - lastScreenshot >= screenshotInterval)
+            {
+                await _screenshotCollector.CaptureAndSendAsync();
             }
         }
 

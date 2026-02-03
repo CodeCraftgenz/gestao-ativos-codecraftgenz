@@ -24,7 +24,7 @@ public class Program
 
         try
         {
-            Log.Information("=== PatioAgent v1.0.0 iniciando ===");
+            Log.Information("=== PatioAgent v1.2.0 iniciando ===");
 
             var builder = Host.CreateApplicationBuilder(args);
 
@@ -34,6 +34,7 @@ public class Program
             builder.Services.AddSingleton<EnrollmentService>();
             builder.Services.AddSingleton<EventCollector>();
             builder.Services.AddSingleton<InventoryCollector>();
+            builder.Services.AddSingleton<ScreenshotCollector>();
             builder.Services.AddHostedService<PatioWorker>();
 
             // Configurar como Windows Service

@@ -87,11 +87,14 @@ public class EventCollector
     {
         try
         {
+            // Obtem versao do assembly dinamicamente
+            var version = typeof(EventCollector).Assembly.GetName().Version?.ToString(3) ?? "1.2.0";
+
             var heartbeat = new HeartbeatRequest
             {
                 DeviceId = _storage.Config.DeviceId!,
                 Timestamp = DateTime.UtcNow.ToString("o"),
-                AgentVersion = "1.0.0",
+                AgentVersion = version,
                 UptimeSeconds = (long)(DateTime.UtcNow - _lastBootTime).TotalSeconds,
                 CurrentUser = Environment.UserName
             };

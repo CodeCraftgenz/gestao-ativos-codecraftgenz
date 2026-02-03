@@ -11,8 +11,8 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <AssemblyName>PatioAgent</AssemblyName>
-    <Version>1.0.0</Version>
-    <Description>Agente simplificado para controle de maquinas - Boot/Shutdown/Login</Description>
+    <Version>1.2.0</Version>
+    <Description>Agente para controle de maquinas - Boot/Shutdown/Login/Screenshots</Description>
     <Company>CodeCraftGenZ</Company>
     <Product>Patio de Controle</Product>
   </PropertyGroup>
@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="Serilog" Version="3.1.1" />

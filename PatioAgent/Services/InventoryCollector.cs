@@ -234,11 +234,16 @@ public class InventoryCollector
                         ? Math.Round(((diskInfo.TotalGb - diskInfo.FreeGb) / diskInfo.TotalGb) * 100, 1)
                         : 0;
 
-                    // Tenta refinar o tipo do disco
+                    // Tenta refinar o tipo do disco e obter modelo/serial
                     if (drive.DriveType == DriveType.Fixed)
                     {
-                        // Busca tipo real via WMI
-                        diskInfo.DiskType = GetDiskTypeForVolume(drive.Name) ?? "HDD";
+                        var physicalDiskInfo = GetPhysicalDiskInfoForVolume(drive.Name);
+                        if (physicalDiskInfo != null)
+                        {
+                            diskInfo.DiskType = physicalDiskInfo.Value.DiskType;
+                            diskInfo.Model = physicalDiskInfo.Value.Model;
+                            diskInfo.SerialNumber = physicalDiskInfo.Value.SerialNumber;
+                        }
                     }
 
                     disks.Add(diskInfo);
@@ -258,9 +263,19 @@ public class InventoryCollector
     }
 
     /// <summary>
-    /// Tenta determinar o tipo de disco para um volume
+    /// Informacoes do disco fisico
     /// </summary>
-    private string? GetDiskTypeForVolume(string driveLetter)
+    private readonly struct PhysicalDiskInfo
+    {
+        public string DiskType { get; init; }
+        public string? Model { get; init; }
+        public string? SerialNumber { get; init; }
+    }
+
+    /// <summary>
+    /// Obtem informacoes do disco fisico para um volume (tipo, modelo, serial)
+    /// </summary>
+    private PhysicalDiskInfo? GetPhysicalDiskInfoForVolume(string driveLetter)
     {
         try
         {
@@ -277,18 +292,28 @@ public class InventoryCollector
                 using var diskSearcher = new ManagementObjectSearcher(diskQuery);
                 foreach (var disk in diskSearcher.Get())
                 {
-                    var model = disk["Model"]?.ToString() ?? "";
+                    var model = disk["Model"]?.ToString()?.Trim() ?? "";
+                    var serial = disk["SerialNumber"]?.ToString()?.Trim();
+
+                    // Determina tipo pelo modelo
+                    var diskType = "HDD";
                     if (model.Contains("NVMe", StringComparison.OrdinalIgnoreCase))
-                        return "NVMe";
-                    if (model.Contains("SSD", StringComparison.OrdinalIgnoreCase))
-                        return "SSD";
-                    return "HDD";
+                        diskType = "NVMe";
+                    else if (model.Contains("SSD", StringComparison.OrdinalIgnoreCase))
+                        diskType = "SSD";
+
+                    return new PhysicalDiskInfo
+                    {
+                        DiskType = diskType,
+                        Model = string.IsNullOrEmpty(model) ? null : model,
+                        SerialNumber = string.IsNullOrEmpty(serial) ? null : serial
+                    };
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.Debug(ex, "Erro ao determinar tipo de disco para {Drive}", driveLetter);
+            Log.Debug(ex, "Erro ao obter info do disco fisico para {Drive}", driveLetter);
         }
         return null;
     }

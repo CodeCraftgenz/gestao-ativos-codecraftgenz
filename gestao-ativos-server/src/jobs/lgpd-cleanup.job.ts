@@ -1,5 +1,6 @@
 import { query, queryOne, execute } from '../config/database.js';
 import { logger } from '../config/logger.js';
+import { deleteScreenshotFile } from '../config/upload.js';
 
 // =============================================================================
 // CONFIGURACAO LGPD
@@ -8,6 +9,7 @@ import { logger } from '../config/logger.js';
 interface LGPDConfig {
   heartbeat_retention_days: number;     // Heartbeats detalhados
   snapshot_retention_days: number;      // Snapshots de tempo real
+  screenshot_retention_days: number;    // Screenshots de auditoria
   activity_retention_days: number;      // Eventos de atividade (boot/shutdown/login)
   ip_anonymize_after_days: number;      // Anonimizar IP
   user_anonymize_after_days: number;    // Anonimizar usuario
@@ -16,6 +18,7 @@ interface LGPDConfig {
 const DEFAULT_LGPD_CONFIG: LGPDConfig = {
   heartbeat_retention_days: 90,         // 3 meses
   snapshot_retention_days: 30,          // 1 mes
+  screenshot_retention_days: 30,        // 1 mes (screenshots sao dados sensiveis)
   activity_retention_days: 365,         // 1 ano
   ip_anonymize_after_days: 30,          // 1 mes (reduzido de 180)
   user_anonymize_after_days: 90,        // 3 meses (reduzido de 730)
@@ -163,6 +166,135 @@ async function cleanupSnapshotsByUser(userRetentionMap: Map<number, number>): Pr
     const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
     logger.error('LGPD Cleanup: Falha ao limpar snapshots por usuario', { error: errorMsg });
     return { table: 'device_snapshots', deleted: totalDeleted, error: errorMsg };
+  }
+}
+
+/**
+ * Remove screenshots antigos e seus arquivos do disco
+ * LGPD Compliance: Remove dados sensiveis (capturas de tela) apos periodo de retencao
+ */
+async function cleanupScreenshots(retentionDays: number): Promise<CleanupResult> {
+  try {
+    // Primeiro, busca os caminhos dos arquivos a serem removidos
+    const screenshotsToDelete = await query<{ id: number; storage_path: string }>(
+      `SELECT id, storage_path FROM device_screenshots
+       WHERE captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [retentionDays]
+    );
+
+    let filesDeleted = 0;
+    let dbDeleted = 0;
+
+    if (screenshotsToDelete && Array.isArray(screenshotsToDelete)) {
+      // Remove arquivos do disco
+      for (const screenshot of screenshotsToDelete) {
+        try {
+          deleteScreenshotFile(screenshot.storage_path);
+          filesDeleted++;
+        } catch (fileError) {
+          logger.warn(`LGPD Cleanup: Falha ao remover arquivo de screenshot: ${screenshot.storage_path}`);
+        }
+      }
+
+      // Remove registros do banco
+      const result = await execute(
+        `DELETE FROM device_screenshots
+         WHERE captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [retentionDays]
+      );
+      dbDeleted = (result as { affectedRows?: number })?.affectedRows ?? 0;
+    }
+
+    logger.info(`LGPD Cleanup: ${dbDeleted} screenshots removidos (${filesDeleted} arquivos deletados) (> ${retentionDays} dias)`);
+    return { table: 'device_screenshots', deleted: dbDeleted };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    logger.error('LGPD Cleanup: Falha ao limpar screenshots', { error: errorMsg });
+    return { table: 'device_screenshots', deleted: 0, error: errorMsg };
+  }
+}
+
+/**
+ * Remove screenshots antigos respeitando o plano de cada usuario
+ * LGPD Compliance: Cada usuario tem seu proprio data_retention_days
+ */
+async function cleanupScreenshotsByUser(userRetentionMap: Map<number, number>): Promise<CleanupResult> {
+  let totalDeleted = 0;
+  let totalFilesDeleted = 0;
+
+  try {
+    const defaultRetention = Math.min(30, DEFAULT_LGPD_CONFIG.screenshot_retention_days);
+
+    // Remove screenshots de dispositivos de usuarios sem subscription
+    const orphanScreenshots = await query<{ id: number; storage_path: string }>(
+      `SELECT ds.id, ds.storage_path FROM device_screenshots ds
+       WHERE ds.user_id NOT IN (
+         SELECT user_id FROM subscriptions WHERE status = 'active'
+       )
+       AND ds.captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [defaultRetention]
+    );
+
+    if (orphanScreenshots && Array.isArray(orphanScreenshots)) {
+      for (const screenshot of orphanScreenshots) {
+        try {
+          deleteScreenshotFile(screenshot.storage_path);
+          totalFilesDeleted++;
+        } catch {
+          // Ignora erros de arquivo individual
+        }
+      }
+
+      const orphanResult = await execute(
+        `DELETE ds FROM device_screenshots ds
+         WHERE ds.user_id NOT IN (
+           SELECT user_id FROM subscriptions WHERE status = 'active'
+         )
+         AND ds.captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [defaultRetention]
+      );
+      totalDeleted += (orphanResult as { affectedRows?: number })?.affectedRows ?? 0;
+    }
+
+    // Remove screenshots para cada usuario respeitando seu plano
+    for (const [userId, retentionDays] of userRetentionMap) {
+      // Screenshots tem retencao menor (max 30 dias ou o valor do plano, o que for menor)
+      const screenshotRetention = Math.min(30, retentionDays);
+
+      // Busca arquivos a remover
+      const userScreenshots = await query<{ id: number; storage_path: string }>(
+        `SELECT id, storage_path FROM device_screenshots
+         WHERE user_id = ?
+         AND captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [userId, screenshotRetention]
+      );
+
+      if (userScreenshots && Array.isArray(userScreenshots)) {
+        for (const screenshot of userScreenshots) {
+          try {
+            deleteScreenshotFile(screenshot.storage_path);
+            totalFilesDeleted++;
+          } catch {
+            // Ignora erros de arquivo individual
+          }
+        }
+      }
+
+      const result = await execute(
+        `DELETE FROM device_screenshots
+         WHERE user_id = ?
+         AND captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [userId, screenshotRetention]
+      );
+      totalDeleted += (result as { affectedRows?: number })?.affectedRows ?? 0;
+    }
+
+    logger.info(`LGPD Cleanup: ${totalDeleted} screenshots removidos (${totalFilesDeleted} arquivos) (por usuario)`);
+    return { table: 'device_screenshots', deleted: totalDeleted };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    logger.error('LGPD Cleanup: Falha ao limpar screenshots por usuario', { error: errorMsg });
+    return { table: 'device_screenshots', deleted: totalDeleted, error: errorMsg };
   }
 }
 
@@ -417,6 +549,11 @@ export async function runLGPDCleanup(): Promise<LGPDCleanupResult> {
   results.push(snapshotsResult);
   if (snapshotsResult.error) errors.push(`Snapshots: ${snapshotsResult.error}`);
 
+  // 2.1 Limpar screenshots antigos (por usuario, respeitando cada plano)
+  const screenshotsResult = await cleanupScreenshotsByUser(userRetentionMap);
+  results.push(screenshotsResult);
+  if (screenshotsResult.error) errors.push(`Screenshots: ${screenshotsResult.error}`);
+
   // 3. Limpar eventos de atividade antigos
   const activityResult = await cleanupActivityEvents(config.activity_retention_days);
   results.push(activityResult);
@@ -483,6 +620,8 @@ export async function getLGPDStatus(): Promise<{
     heartbeats_old: number;
     snapshots_total: number;
     snapshots_old: number;
+    screenshots_total: number;
+    screenshots_old: number;
     activity_events_total: number;
     activity_events_old: number;
   };
@@ -505,6 +644,14 @@ export async function getLGPDStatus(): Promise<{
     [config.snapshot_retention_days]
   );
 
+  const screenshotsTotal = await queryOne<{ count: number }>(
+    `SELECT COUNT(*) as count FROM device_screenshots`
+  );
+  const screenshotsOld = await queryOne<{ count: number }>(
+    `SELECT COUNT(*) as count FROM device_screenshots WHERE captured_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+    [config.screenshot_retention_days]
+  );
+
   const activityTotal = await queryOne<{ count: number }>(
     `SELECT COUNT(*) as count FROM device_activity_events`
   );
@@ -520,6 +667,8 @@ export async function getLGPDStatus(): Promise<{
       heartbeats_old: heartbeatsOld?.count ?? 0,
       snapshots_total: snapshotsTotal?.count ?? 0,
       snapshots_old: snapshotsOld?.count ?? 0,
+      screenshots_total: screenshotsTotal?.count ?? 0,
+      screenshots_old: screenshotsOld?.count ?? 0,
       activity_events_total: activityTotal?.count ?? 0,
       activity_events_old: activityOld?.count ?? 0,
     },

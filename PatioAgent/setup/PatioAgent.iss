@@ -2,10 +2,10 @@
 ; Patio de Controle - Agente Windows
 
 #define MyAppName "PatioAgent"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "CodeCraft"
 #define MyAppExeName "PatioAgent.exe"
-#define MyAppDescription "Agente de monitoramento para controle de maquinas"
+#define MyAppDescription "Agente de monitoramento para controle de maquinas com captura de screenshots"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-PATIOAGENT01}
@@ -31,11 +31,9 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; Executavel principal e dependencias
-Source: "..\PatioAgent.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\*.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\*.pdb"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Executavel principal (self-contained single file)
+Source: "..\publish\PatioAgent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\*.pdb"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -44,7 +42,7 @@ Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
 [Run]
 ; Instala como servico Windows apos instalacao
 Filename: "sc.exe"; Parameters: "create PatioAgent binPath= ""{app}\{#MyAppExeName}"" start= auto DisplayName= ""Patio de Controle - Agent"""; Flags: runhidden waituntilterminated; StatusMsg: "Registrando servico..."
-Filename: "sc.exe"; Parameters: "description PatioAgent ""Agente de monitoramento para controle de maquinas (boot/shutdown/login)"""; Flags: runhidden waituntilterminated
+Filename: "sc.exe"; Parameters: "description PatioAgent ""Agente de monitoramento para controle de maquinas (boot/shutdown/login/screenshots)"""; Flags: runhidden waituntilterminated
 Filename: "sc.exe"; Parameters: "failure PatioAgent reset= 86400 actions= restart/60000/restart/60000/restart/60000"; Flags: runhidden waituntilterminated
 Filename: "sc.exe"; Parameters: "start PatioAgent"; Flags: runhidden waituntilterminated; StatusMsg: "Iniciando servico..."
 
