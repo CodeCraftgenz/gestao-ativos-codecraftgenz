@@ -273,6 +273,7 @@ export interface AuthenticatedDevice {
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
   device?: AuthenticatedDevice;
+  file?: Express.Multer.File;
 }
 
 // =============================================================================

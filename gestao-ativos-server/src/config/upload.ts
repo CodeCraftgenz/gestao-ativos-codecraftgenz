@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { config } from './index.js';
+import type { Request } from 'express';
 
 // Diretorio base para uploads
 const UPLOAD_BASE_DIR = process.env['UPLOAD_DIR'] || path.resolve('uploads');
@@ -50,7 +50,7 @@ const screenshotStorage = multer.diskStorage({
  * Filtro para aceitar apenas imagens JPEG
  */
 function imageFilter(
-  req: Express.Request,
+  req: Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ): void {
