@@ -99,6 +99,18 @@ export async function deleteSSOConfig(
 ) {
   try {
     const userId = req.user!.id;
+
+    // Verifica se tem acesso ao recurso antes de permitir delete
+    const hasAccess = await enterpriseService.hasFeature(userId, 'sso_enabled');
+    if (!hasAccess) {
+      // Registra tentativa de acesso apos downgrade
+      console.warn(`[SECURITY] Tentativa de deletar SSO sem permissao. User: ${userId}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Voce nao tem permissao para gerenciar configuracoes SSO. Seu plano nao inclui este recurso.',
+      });
+    }
+
     await enterpriseService.deleteSSOConfig(userId);
     res.json({ success: true, message: 'Configuracao SSO removida' });
   } catch (error) {
@@ -237,6 +249,17 @@ export async function deleteWebhook(
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
 
+    // Verifica se tem acesso ao recurso antes de permitir delete
+    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
+    if (!hasAccess) {
+      // Registra tentativa de acesso apos downgrade
+      console.warn(`[SECURITY] Tentativa de deletar Webhook sem permissao. User: ${userId}, Webhook: ${webhookId}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Voce nao tem permissao para gerenciar webhooks. Seu plano nao inclui este recurso.',
+      });
+    }
+
     await enterpriseService.deleteWebhook(userId, webhookId);
     res.json({ success: true, message: 'Webhook removido' });
   } catch (error) {
@@ -361,6 +384,18 @@ export async function deleteBranding(
 ) {
   try {
     const userId = req.user!.id;
+
+    // Verifica se tem acesso ao recurso antes de permitir delete
+    const hasAccess = await enterpriseService.hasFeature(userId, 'white_label');
+    if (!hasAccess) {
+      // Registra tentativa de acesso apos downgrade
+      console.warn(`[SECURITY] Tentativa de deletar Branding sem permissao. User: ${userId}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Voce nao tem permissao para gerenciar personalizacao. Seu plano nao inclui este recurso.',
+      });
+    }
+
     await enterpriseService.deleteBranding(userId);
     res.json({ success: true, message: 'Personalizacao removida' });
   } catch (error) {

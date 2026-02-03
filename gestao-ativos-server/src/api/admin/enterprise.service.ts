@@ -530,9 +530,17 @@ export async function revokeApiToken(
   );
 }
 
+export interface ValidateApiTokenResult {
+  valid: boolean;
+  userId?: number;
+  scopes?: string[];
+  reason?: 'TOKEN_NOT_FOUND' | 'TOKEN_REVOKED' | 'TOKEN_EXPIRED' | 'PLAN_DOWNGRADED' | 'SUBSCRIPTION_INACTIVE';
+  apiAccessLevel?: 'read' | 'read_write';
+}
+
 export async function validateApiToken(
   plainToken: string
-): Promise<{ valid: boolean; userId?: number; scopes?: string[] }> {
+): Promise<ValidateApiTokenResult> {
   const tokenHash = hashToken(plainToken);
 
   const [rows] = await pool.query<RowDataPacket[]>(
@@ -543,19 +551,46 @@ export async function validateApiToken(
   );
 
   if (rows.length === 0) {
-    return { valid: false };
+    return { valid: false, reason: 'TOKEN_NOT_FOUND' };
   }
 
   const token = rows[0];
 
   // Verifica se foi revogado
   if (token.revoked_at) {
-    return { valid: false };
+    return { valid: false, reason: 'TOKEN_REVOKED' };
   }
 
   // Verifica se expirou
   if (token.expires_at && new Date(token.expires_at) < new Date()) {
-    return { valid: false };
+    return { valid: false, reason: 'TOKEN_EXPIRED' };
+  }
+
+  // =========================================================================
+  // SEGURANCA: Verifica se o usuario ainda tem acesso a API no plano atual
+  // =========================================================================
+  const features = await getPlanFeatures(token.user_id);
+
+  if (!features) {
+    // Usuario nao tem subscription ativa
+    return { valid: false, reason: 'SUBSCRIPTION_INACTIVE' };
+  }
+
+  if (!features.api_access) {
+    // Usuario fez downgrade e perdeu acesso a API
+    // Registra log de tentativa de uso apos downgrade
+    console.warn(`[SECURITY] Token ${token.id} usado apos downgrade de plano. User: ${token.user_id}`);
+    return { valid: false, reason: 'PLAN_DOWNGRADED' };
+  }
+
+  // Verifica se os scopes do token sao compativeis com o nivel de API do plano
+  const tokenScopes = typeof token.scopes === 'string' ? JSON.parse(token.scopes) : token.scopes;
+  const userApiLevel = features.api_access_level || 'read';
+
+  // Se o token tem scope 'write' mas o plano so permite 'read', invalida
+  if (tokenScopes.includes('write') && userApiLevel !== 'read_write') {
+    console.warn(`[SECURITY] Token ${token.id} com scope write usado em plano read-only. User: ${token.user_id}`);
+    return { valid: false, reason: 'PLAN_DOWNGRADED' };
   }
 
   // Atualiza estatisticas
@@ -567,7 +602,8 @@ export async function validateApiToken(
   return {
     valid: true,
     userId: token.user_id,
-    scopes: typeof token.scopes === 'string' ? JSON.parse(token.scopes) : token.scopes,
+    scopes: tokenScopes,
+    apiAccessLevel: userApiLevel,
   };
 }
 

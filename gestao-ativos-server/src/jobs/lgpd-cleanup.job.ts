@@ -34,6 +34,7 @@ interface CleanupResult {
 
 /**
  * Remove heartbeats antigos baseado no plano do dispositivo
+ * LGPD Compliance: Respeita data_retention_days individual de cada usuario
  */
 async function cleanupHeartbeats(retentionDays: number): Promise<CleanupResult> {
   try {
@@ -51,6 +52,50 @@ async function cleanupHeartbeats(retentionDays: number): Promise<CleanupResult> 
     const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
     logger.error('LGPD Cleanup: Falha ao limpar heartbeats', { error: errorMsg });
     return { table: 'device_heartbeats', deleted: 0, error: errorMsg };
+  }
+}
+
+/**
+ * Remove heartbeats antigos respeitando o plano de cada usuario
+ * LGPD Compliance: Cada usuario tem seu proprio data_retention_days
+ */
+async function cleanupHeartbeatsByUser(userRetentionMap: Map<number, number>): Promise<CleanupResult> {
+  let totalDeleted = 0;
+
+  try {
+    // Para usuarios sem subscription ativa, usa retencao padrao (7 dias - plano gratuito)
+    const defaultRetention = DEFAULT_LGPD_CONFIG.heartbeat_retention_days;
+
+    // Remove heartbeats de dispositivos de usuarios sem subscription
+    const orphanResult = await execute(
+      `DELETE dh FROM device_heartbeats dh
+       INNER JOIN devices d ON dh.device_id = d.id
+       WHERE d.user_id NOT IN (
+         SELECT user_id FROM subscriptions WHERE status = 'active'
+       )
+       AND dh.received_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [defaultRetention]
+    );
+    totalDeleted += (orphanResult as { affectedRows?: number })?.affectedRows ?? 0;
+
+    // Remove heartbeats para cada usuario respeitando seu plano
+    for (const [userId, retentionDays] of userRetentionMap) {
+      const result = await execute(
+        `DELETE dh FROM device_heartbeats dh
+         INNER JOIN devices d ON dh.device_id = d.id
+         WHERE d.user_id = ?
+         AND dh.received_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [userId, retentionDays]
+      );
+      totalDeleted += (result as { affectedRows?: number })?.affectedRows ?? 0;
+    }
+
+    logger.info(`LGPD Cleanup: ${totalDeleted} heartbeats removidos (por usuario)`);
+    return { table: 'device_heartbeats', deleted: totalDeleted };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    logger.error('LGPD Cleanup: Falha ao limpar heartbeats por usuario', { error: errorMsg });
+    return { table: 'device_heartbeats', deleted: totalDeleted, error: errorMsg };
   }
 }
 
@@ -73,6 +118,51 @@ async function cleanupSnapshots(retentionDays: number): Promise<CleanupResult> {
     const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
     logger.error('LGPD Cleanup: Falha ao limpar snapshots', { error: errorMsg });
     return { table: 'device_snapshots', deleted: 0, error: errorMsg };
+  }
+}
+
+/**
+ * Remove snapshots antigos respeitando o plano de cada usuario
+ * LGPD Compliance: Cada usuario tem seu proprio data_retention_days
+ */
+async function cleanupSnapshotsByUser(userRetentionMap: Map<number, number>): Promise<CleanupResult> {
+  let totalDeleted = 0;
+
+  try {
+    const defaultRetention = Math.min(30, DEFAULT_LGPD_CONFIG.snapshot_retention_days);
+
+    // Remove snapshots de dispositivos de usuarios sem subscription
+    const orphanResult = await execute(
+      `DELETE ds FROM device_snapshots ds
+       INNER JOIN devices d ON ds.device_id = d.id
+       WHERE d.user_id NOT IN (
+         SELECT user_id FROM subscriptions WHERE status = 'active'
+       )
+       AND ds.collected_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [defaultRetention]
+    );
+    totalDeleted += (orphanResult as { affectedRows?: number })?.affectedRows ?? 0;
+
+    // Remove snapshots para cada usuario respeitando seu plano
+    for (const [userId, retentionDays] of userRetentionMap) {
+      // Snapshots tem retencao menor (max 30 dias ou o valor do plano, o que for menor)
+      const snapshotRetention = Math.min(30, retentionDays);
+      const result = await execute(
+        `DELETE ds FROM device_snapshots ds
+         INNER JOIN devices d ON ds.device_id = d.id
+         WHERE d.user_id = ?
+         AND ds.collected_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [userId, snapshotRetention]
+      );
+      totalDeleted += (result as { affectedRows?: number })?.affectedRows ?? 0;
+    }
+
+    logger.info(`LGPD Cleanup: ${totalDeleted} snapshots removidos (por usuario)`);
+    return { table: 'device_snapshots', deleted: totalDeleted };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    logger.error('LGPD Cleanup: Falha ao limpar snapshots por usuario', { error: errorMsg });
+    return { table: 'device_snapshots', deleted: totalDeleted, error: errorMsg };
   }
 }
 
@@ -256,55 +346,74 @@ export interface LGPDCleanupResult {
 }
 
 /**
- * Busca configuracao LGPD do plano ativo (ou usa padrao)
+ * Busca configuracao LGPD padrao (fallback)
  */
-async function getLGPDConfig(): Promise<LGPDConfig> {
+async function getDefaultLGPDConfig(): Promise<LGPDConfig> {
+  return DEFAULT_LGPD_CONFIG;
+}
+
+interface UserRetention {
+  user_id: number;
+  data_retention_days: number;
+}
+
+/**
+ * Busca todos os usuarios com seus respectivos data_retention_days
+ * Retorna um mapa de user_id -> data_retention_days
+ */
+async function getUserRetentionMap(): Promise<Map<number, number>> {
+  const retentionMap = new Map<number, number>();
+
   try {
-    const subscription = await queryOne<{
-      data_retention_days: number;
-    }>(`
-      SELECT p.data_retention_days
+    const subscriptions = await query<UserRetention>(`
+      SELECT s.user_id, p.data_retention_days
       FROM subscriptions s
       INNER JOIN plans p ON s.plan_id = p.id
       WHERE s.status = 'active'
-      ORDER BY p.data_retention_days DESC
-      LIMIT 1
     `);
 
-    if (subscription?.data_retention_days) {
-      return {
-        ...DEFAULT_LGPD_CONFIG,
-        heartbeat_retention_days: subscription.data_retention_days,
-        snapshot_retention_days: Math.min(30, subscription.data_retention_days),
-      };
+    if (subscriptions && Array.isArray(subscriptions)) {
+      for (const sub of subscriptions) {
+        retentionMap.set(sub.user_id, sub.data_retention_days);
+      }
     }
   } catch (error) {
-    logger.warn('LGPD Cleanup: Usando configuracao padrao');
+    logger.warn('LGPD Cleanup: Erro ao buscar retencao por usuario');
   }
 
-  return DEFAULT_LGPD_CONFIG;
+  return retentionMap;
+}
+
+// Mantido para compatibilidade (usado em algumas funcoes)
+async function getLGPDConfig(): Promise<LGPDConfig> {
+  return getDefaultLGPDConfig();
 }
 
 /**
  * Executa todas as operacoes de limpeza LGPD
+ * LGPD Compliance: Respeita data_retention_days individual de cada usuario/plano
  */
 export async function runLGPDCleanup(): Promise<LGPDCleanupResult> {
   const startedAt = new Date();
   logger.info('=== LGPD Cleanup Job Iniciado ===');
 
-  const config = await getLGPDConfig();
-  logger.info('Configuracao LGPD:', config);
+  const config = await getDefaultLGPDConfig();
+  logger.info('Configuracao LGPD padrao:', config);
+
+  // Busca mapa de retencao por usuario
+  const userRetentionMap = await getUserRetentionMap();
+  logger.info(`LGPD Cleanup: ${userRetentionMap.size} usuarios com subscriptions ativas`);
 
   const results: CleanupResult[] = [];
   const errors: string[] = [];
 
-  // 1. Limpar heartbeats antigos
-  const heartbeatsResult = await cleanupHeartbeats(config.heartbeat_retention_days);
+  // 1. Limpar heartbeats antigos (por usuario, respeitando cada plano)
+  const heartbeatsResult = await cleanupHeartbeatsByUser(userRetentionMap);
   results.push(heartbeatsResult);
   if (heartbeatsResult.error) errors.push(`Heartbeats: ${heartbeatsResult.error}`);
 
-  // 2. Limpar snapshots antigos
-  const snapshotsResult = await cleanupSnapshots(config.snapshot_retention_days);
+  // 2. Limpar snapshots antigos (por usuario, respeitando cada plano)
+  const snapshotsResult = await cleanupSnapshotsByUser(userRetentionMap);
   results.push(snapshotsResult);
   if (snapshotsResult.error) errors.push(`Snapshots: ${snapshotsResult.error}`);
 
