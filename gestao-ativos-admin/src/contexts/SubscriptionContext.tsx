@@ -222,65 +222,45 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Extrai features do plano (suporta JSON features ou fallback por slug)
+  // Extrai features do plano (merge JSON com defaults por slug)
   const extractFeatures = useCallback((planData: Plan): PlanFeatures => {
-    // Se o plano tem campo features JSON (nova estrutura)
+    // Obtem defaults baseado no slug (garante todas as chaves presentes)
+    const defaults = getFeaturesBySlug(planData.slug || 'gratuito', planData);
+
+    // Se o plano tem campo features JSON, faz merge com defaults
     if (planData.features && typeof planData.features === 'object') {
       const f = planData.features;
       return {
+        ...defaults,
         // Features basicas
-        alerts: f.alerts ?? planData.feature_alerts ?? false,
-        reports: f.reports ?? planData.feature_reports ?? false,
-        geoip: f.geoip ?? planData.feature_geoip ?? false,
-        remoteAccess: f.remote_access ?? true,
+        alerts: f.alerts ?? defaults.alerts,
+        reports: f.reports ?? defaults.reports,
+        geoip: f.geoip ?? defaults.geoip,
+        remoteAccess: f.remote_access ?? defaults.remoteAccess,
         // Features avancadas
-        auditLogs: f.audit_logs ?? false,
-        auditLogExport: f.audit_log_export ?? false,
-        shadowItAlert: f.shadow_it_alert ?? false,
-        apiAccess: f.api_access ?? planData.feature_api_access ?? false,
-        apiAccessLevel: f.api_access_level,
+        auditLogs: f.audit_logs ?? defaults.auditLogs,
+        auditLogExport: f.audit_log_export ?? defaults.auditLogExport,
+        shadowItAlert: f.shadow_it_alert ?? defaults.shadowItAlert,
+        apiAccess: f.api_access ?? defaults.apiAccess,
+        apiAccessLevel: f.api_access_level ?? defaults.apiAccessLevel,
         // Features enterprise
-        webhooks: f.webhooks ?? false,
-        ssoEnabled: f.sso_enabled ?? false,
-        whiteLabel: f.white_label ?? false,
-        msiInstaller: f.msi_installer ?? false,
-        prioritySupport: f.priority_support ?? false,
-        dedicatedSupport: f.dedicated_support,
-        slaGuarantee: f.sla_guarantee,
-        customRetention: f.custom_retention,
+        webhooks: f.webhooks ?? defaults.webhooks,
+        ssoEnabled: f.sso_enabled ?? defaults.ssoEnabled,
+        whiteLabel: f.white_label ?? defaults.whiteLabel,
+        msiInstaller: f.msi_installer ?? defaults.msiInstaller,
+        prioritySupport: f.priority_support ?? defaults.prioritySupport,
+        dedicatedSupport: f.dedicated_support ?? defaults.dedicatedSupport,
+        slaGuarantee: f.sla_guarantee ?? defaults.slaGuarantee,
+        customRetention: f.custom_retention ?? defaults.customRetention,
         // Limites
-        maxDevices: f.max_devices ?? planData.max_devices ?? 5,
-        maxUsers: planData.max_users ?? 1,
-        maxFiliais: planData.max_filiais ?? 1,
-        dataRetentionDays: f.data_retention_days ?? planData.data_retention_days ?? 30,
+        maxDevices: f.max_devices ?? defaults.maxDevices,
+        maxUsers: defaults.maxUsers,
+        maxFiliais: defaults.maxFiliais,
+        dataRetentionDays: f.data_retention_days ?? defaults.dataRetentionDays,
       };
     }
 
-    // Fallback: deriva features pelo slug do plano
-    if (planData.slug) {
-      return getFeaturesBySlug(planData.slug, planData);
-    }
-
-    // Ultimo fallback: campos individuais antigos
-    return {
-      alerts: planData.feature_alerts ?? false,
-      reports: planData.feature_reports ?? false,
-      geoip: planData.feature_geoip ?? false,
-      remoteAccess: true,
-      auditLogs: false,
-      auditLogExport: false,
-      shadowItAlert: false,
-      apiAccess: planData.feature_api_access ?? false,
-      webhooks: false,
-      ssoEnabled: false,
-      whiteLabel: false,
-      msiInstaller: false,
-      prioritySupport: false,
-      maxDevices: planData.max_devices ?? 5,
-      maxUsers: planData.max_users ?? 1,
-      maxFiliais: planData.max_filiais ?? 1,
-      dataRetentionDays: planData.data_retention_days ?? 30,
-    };
+    return defaults;
   }, [getFeaturesBySlug]);
 
   // Carrega subscription do usuario

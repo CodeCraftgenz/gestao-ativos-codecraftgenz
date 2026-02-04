@@ -545,14 +545,13 @@ export async function getPlans(): Promise<Plan[]> {
     ORDER BY price_monthly_cents ASC
   `);
 
-  // Parse features JSON para cada plano (com fallback por slug)
+  // Parse features JSON para cada plano (merge com defaults por slug)
   return plans.map(plan => {
-    let features = plan.features
+    const defaults = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+    const parsed = plan.features
       ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
       : null;
-    if (!features) {
-      features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
-    }
+    const features = parsed ? { ...defaults, ...parsed } : defaults;
     return { ...plan, features };
   });
 }
@@ -576,12 +575,11 @@ export async function getPlanById(id: number): Promise<Plan> {
     throw new AppError(404, 'Plano nao encontrado');
   }
 
-  let features = plan.features
+  const defaults = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+  const parsed = plan.features
     ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
     : null;
-  if (!features) {
-    features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
-  }
+  const features = parsed ? { ...defaults, ...parsed } : defaults;
 
   return { ...plan, features };
 }
@@ -605,12 +603,11 @@ export async function getPlanBySlug(slug: string): Promise<Plan> {
     throw new AppError(404, 'Plano nao encontrado');
   }
 
-  let features = plan.features
+  const defaults = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+  const parsed = plan.features
     ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
     : null;
-  if (!features) {
-    features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
-  }
+  const features = parsed ? { ...defaults, ...parsed } : defaults;
 
   return { ...plan, features };
 }
@@ -661,26 +658,23 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
     return null;
   }
 
-  // Parse features JSON se existir
-  let features = null;
+  // Merge features JSON com defaults por slug (garante todas as chaves presentes)
+  const defaults = getDefaultFeaturesBySlug(
+    subscription.plan_slug,
+    subscription.plan_max_devices,
+    subscription.plan_data_retention_days
+  );
+  let parsed = null;
   if (subscription.plan_features) {
     try {
-      features = typeof subscription.plan_features === 'string'
+      parsed = typeof subscription.plan_features === 'string'
         ? JSON.parse(subscription.plan_features)
         : subscription.plan_features;
     } catch {
-      features = null;
+      parsed = null;
     }
   }
-
-  // Fallback: se features JSON nao esta populado, gera baseado no slug do plano
-  if (!features) {
-    features = getDefaultFeaturesBySlug(
-      subscription.plan_slug,
-      subscription.plan_max_devices,
-      subscription.plan_data_retention_days
-    );
-  }
+  const features = parsed ? { ...defaults, ...parsed } : defaults;
 
   return {
     ...subscription,

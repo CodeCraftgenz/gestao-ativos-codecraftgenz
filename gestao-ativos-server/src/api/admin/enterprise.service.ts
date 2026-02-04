@@ -647,12 +647,14 @@ export async function getPlanFeatures(userId: number): Promise<PlanFeatures | nu
   }
 
   const row = rows[0];
+  const defaults = getDefaultFeaturesBySlug(row.slug, row.max_devices, row.data_retention_days);
+
   if (row.features) {
-    return typeof row.features === 'string' ? JSON.parse(row.features) : row.features;
+    const parsed = typeof row.features === 'string' ? JSON.parse(row.features) : row.features;
+    return { ...defaults, ...parsed };
   }
 
-  // Fallback baseado no slug do plano quando features JSON nao esta populado
-  return getDefaultFeaturesBySlug(row.slug, row.max_devices, row.data_retention_days);
+  return defaults;
 }
 
 export async function hasFeature(userId: number, feature: keyof PlanFeatures): Promise<boolean> {
