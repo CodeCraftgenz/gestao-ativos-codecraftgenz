@@ -73,7 +73,7 @@ async function checkPlanDeviceLimit(): Promise<PlanLimits> {
     SELECT p.name as plan_name, p.max_devices
     FROM subscriptions s
     INNER JOIN plans p ON s.plan_id = p.id
-    WHERE s.status = 'active'
+    WHERE s.status IN ('active', 'trial')
     ORDER BY p.max_devices DESC
     LIMIT 1
   `);

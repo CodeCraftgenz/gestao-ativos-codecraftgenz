@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../types/index.js';
 import * as adminService from './admin.service.js';
+import { getPlanFeatures } from './enterprise.service.js';
 import { runLGPDCleanup, getLGPDStatus, exportLGPDData } from '../../jobs/lgpd-cleanup.job.js';
 
 export async function getStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -258,6 +259,46 @@ export async function cancelMySubscription(req: AuthenticatedRequest, res: Respo
 
     await adminService.cancelSubscription(subscription.id);
     res.json({ success: true, message: 'Subscription cancelada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ============================================================================
+// ENTITLEMENTS (features e quotas do plano atual)
+// ============================================================================
+
+export async function getEntitlements(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+
+    // Busca features do plano
+    const features = await getPlanFeatures(userId);
+
+    // Busca subscription para info do plano
+    const subscription = await adminService.getUserSubscription(userId);
+
+    // Conta dispositivos ativos
+    const stats = await adminService.getStats();
+
+    res.json({
+      success: true,
+      data: {
+        plan: subscription?.plan ? {
+          slug: subscription.plan.slug || 'gratuito',
+          name: subscription.plan.name || 'Gratuito',
+        } : {
+          slug: 'gratuito',
+          name: 'Gratuito',
+        },
+        features: features || {},
+        quotas: {
+          max_devices: features?.max_devices ?? 5,
+          current_devices: stats.totalDevices ?? 0,
+          data_retention_days: features?.data_retention_days ?? 7,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }

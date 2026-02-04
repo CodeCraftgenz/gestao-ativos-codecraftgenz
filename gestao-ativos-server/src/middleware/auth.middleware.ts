@@ -150,7 +150,11 @@ export function requireFeature(featureKey: PlanFeatureKey) {
       const features = await getPlanFeatures(req.user.id);
 
       if (!features) {
-        next(new ForbiddenError('Plano nao encontrado. Entre em contato com o suporte.'));
+        res.status(403).json({
+          success: false,
+          error: 'Plano nao encontrado. Entre em contato com o suporte.',
+          code: 'FEATURE_NOT_ALLOWED',
+        });
         return;
       }
 
@@ -163,9 +167,13 @@ export function requireFeature(featureKey: PlanFeatureKey) {
         const featureName = featureDisplayNames[featureKey] || featureKey;
         const minPlan = featureMinPlan[featureKey] || 'superior';
 
-        next(new ForbiddenError(
-          `${featureName} nao esta disponivel no seu plano. Faca upgrade para o plano ${minPlan} ou superior.`
-        ));
+        res.status(403).json({
+          success: false,
+          error: `${featureName} nao esta disponivel no seu plano. Faca upgrade para o plano ${minPlan} ou superior.`,
+          code: 'FEATURE_NOT_ALLOWED',
+          requiredFeature: featureKey,
+          minPlan,
+        });
         return;
       }
 

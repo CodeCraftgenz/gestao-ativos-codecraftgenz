@@ -13,16 +13,6 @@ export async function getSSOConfig(
 ) {
   try {
     const userId = req.user!.id;
-
-    // Verifica se tem acesso ao recurso
-    const hasAccess = await enterpriseService.hasFeature(userId, 'sso_enabled');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'SSO nao esta disponivel no seu plano. Faca upgrade para o plano Empresarial.',
-      });
-    }
-
     const config = await enterpriseService.getSSOConfig(userId);
     res.json({ success: true, data: config });
   } catch (error) {
@@ -37,15 +27,6 @@ export async function createSSOConfig(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'sso_enabled');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'SSO nao esta disponivel no seu plano.',
-      });
-    }
-
     const { provider, client_id, client_secret, tenant_id, domain, saml_metadata_url } = req.body;
 
     if (!provider) {
@@ -76,15 +57,6 @@ export async function updateSSOConfig(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'sso_enabled');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'SSO nao esta disponivel no seu plano.',
-      });
-    }
-
     const config = await enterpriseService.updateSSOConfig(userId, req.body);
     res.json({ success: true, data: config });
   } catch (error) {
@@ -99,18 +71,6 @@ export async function deleteSSOConfig(
 ) {
   try {
     const userId = req.user!.id;
-
-    // Verifica se tem acesso ao recurso antes de permitir delete
-    const hasAccess = await enterpriseService.hasFeature(userId, 'sso_enabled');
-    if (!hasAccess) {
-      // Registra tentativa de acesso apos downgrade
-      console.warn(`[SECURITY] Tentativa de deletar SSO sem permissao. User: ${userId}`);
-      return res.status(403).json({
-        success: false,
-        error: 'Voce nao tem permissao para gerenciar configuracoes SSO. Seu plano nao inclui este recurso.',
-      });
-    }
-
     await enterpriseService.deleteSSOConfig(userId);
     res.json({ success: true, message: 'Configuracao SSO removida' });
   } catch (error) {
@@ -129,15 +89,6 @@ export async function getWebhooks(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano. Faca upgrade para o plano Empresarial.',
-      });
-    }
-
     const webhooks = await enterpriseService.getWebhooks(userId);
     res.json({ success: true, data: webhooks });
   } catch (error) {
@@ -153,15 +104,6 @@ export async function getWebhookById(
   try {
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano.',
-      });
-    }
-
     const webhook = await enterpriseService.getWebhookById(userId, webhookId);
     if (!webhook) {
       return res.status(404).json({ success: false, error: 'Webhook nao encontrado' });
@@ -180,15 +122,6 @@ export async function createWebhook(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano.',
-      });
-    }
-
     const { name, url, events, secret_key, custom_headers } = req.body;
 
     if (!name || !url || !events) {
@@ -220,15 +153,6 @@ export async function updateWebhook(
   try {
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano.',
-      });
-    }
-
     const webhook = await enterpriseService.updateWebhook(userId, webhookId, req.body);
     if (!webhook) {
       return res.status(404).json({ success: false, error: 'Webhook nao encontrado' });
@@ -248,18 +172,6 @@ export async function deleteWebhook(
   try {
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
-
-    // Verifica se tem acesso ao recurso antes de permitir delete
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      // Registra tentativa de acesso apos downgrade
-      console.warn(`[SECURITY] Tentativa de deletar Webhook sem permissao. User: ${userId}, Webhook: ${webhookId}`);
-      return res.status(403).json({
-        success: false,
-        error: 'Voce nao tem permissao para gerenciar webhooks. Seu plano nao inclui este recurso.',
-      });
-    }
-
     await enterpriseService.deleteWebhook(userId, webhookId);
     res.json({ success: true, message: 'Webhook removido' });
   } catch (error) {
@@ -276,15 +188,6 @@ export async function getWebhookLogs(
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
     const limit = parseInt(req.query.limit as string) || 50;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano.',
-      });
-    }
-
     const logs = await enterpriseService.getWebhookLogs(userId, webhookId, limit);
     res.json({ success: true, data: logs });
   } catch (error) {
@@ -300,15 +203,6 @@ export async function testWebhook(
   try {
     const userId = req.user!.id;
     const webhookId = parseInt(req.params.id);
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'webhooks');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhooks nao estao disponiveis no seu plano.',
-      });
-    }
-
     const webhook = await enterpriseService.getWebhookById(userId, webhookId);
     if (!webhook) {
       return res.status(404).json({ success: false, error: 'Webhook nao encontrado' });
@@ -338,15 +232,6 @@ export async function getBranding(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'white_label');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'White-label nao esta disponivel no seu plano. Faca upgrade para o plano Empresarial.',
-      });
-    }
-
     const branding = await enterpriseService.getBranding(userId);
     res.json({ success: true, data: branding });
   } catch (error) {
@@ -361,15 +246,6 @@ export async function updateBranding(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'white_label');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'White-label nao esta disponivel no seu plano.',
-      });
-    }
-
     const branding = await enterpriseService.createOrUpdateBranding(userId, req.body);
     res.json({ success: true, data: branding });
   } catch (error) {
@@ -384,18 +260,6 @@ export async function deleteBranding(
 ) {
   try {
     const userId = req.user!.id;
-
-    // Verifica se tem acesso ao recurso antes de permitir delete
-    const hasAccess = await enterpriseService.hasFeature(userId, 'white_label');
-    if (!hasAccess) {
-      // Registra tentativa de acesso apos downgrade
-      console.warn(`[SECURITY] Tentativa de deletar Branding sem permissao. User: ${userId}`);
-      return res.status(403).json({
-        success: false,
-        error: 'Voce nao tem permissao para gerenciar personalizacao. Seu plano nao inclui este recurso.',
-      });
-    }
-
     await enterpriseService.deleteBranding(userId);
     res.json({ success: true, message: 'Personalizacao removida' });
   } catch (error) {
@@ -414,15 +278,6 @@ export async function getApiTokens(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'api_access');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Acesso a API nao esta disponivel no seu plano. Faca upgrade para o plano Profissional ou Empresarial.',
-      });
-    }
-
     const tokens = await enterpriseService.getApiTokens(userId);
     res.json({ success: true, data: tokens });
   } catch (error) {
@@ -437,15 +292,6 @@ export async function createApiToken(
 ) {
   try {
     const userId = req.user!.id;
-
-    const hasAccess = await enterpriseService.hasFeature(userId, 'api_access');
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: 'Acesso a API nao esta disponivel no seu plano.',
-      });
-    }
-
     const { name, scopes, rate_limit_per_minute, expires_at } = req.body;
 
     if (!name) {

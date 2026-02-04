@@ -1,10 +1,8 @@
-import { Router, Response, NextFunction } from 'express';
-import { authMiddleware } from '../../middleware/auth.middleware.js';
-import { AuthenticatedRequest, PlanFeatures } from '../../types/index.js';
+import { Router } from 'express';
+import { authMiddleware, requireFeature } from '../../middleware/auth.middleware.js';
 import * as adminController from './admin.controller.js';
 import * as reportsController from './reports.controller.js';
 import * as enterpriseController from './enterprise.controller.js';
-import { hasFeature } from './enterprise.service.js';
 import {
   auditDeviceApproval,
   auditDeviceBlock,
@@ -15,34 +13,6 @@ const router = Router();
 
 // Todas as rotas requerem autenticacao
 router.use(authMiddleware);
-
-// =============================================================================
-// MIDDLEWARE DE VERIFICACAO DE FEATURE
-// =============================================================================
-
-/**
- * Cria middleware que verifica se o usuario tem acesso a uma feature especifica
- */
-function requireFeature(feature: keyof PlanFeatures) {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const hasAccess = await hasFeature(userId, feature);
-
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          error: `Este recurso requer o plano Empresarial. Faca upgrade para acessar.`,
-          requiredFeature: feature,
-        });
-      }
-
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-}
 
 // Dashboard
 router.get('/dashboard/stats', adminController.getStats);
@@ -73,23 +43,26 @@ router.get('/subscription', adminController.getMySubscription);
 router.put('/subscription', adminController.updateMyPlan);
 router.delete('/subscription', adminController.cancelMySubscription);
 
-// Relatorios - Visualizacao
-router.get('/reports/uptime', reportsController.getUptimeReport);
-router.get('/reports/activity', reportsController.getActivityReport);
-router.get('/reports/usage', reportsController.getUsageReport);
-router.get('/reports/idle', reportsController.getIdleReport);
-router.get('/reports/users', reportsController.getUsersReport);
-router.get('/reports/inventory', reportsController.getInventoryReport);
-router.get('/reports/growth', reportsController.getGrowthReport);
+// Entitlements (features e quotas do plano atual)
+router.get('/entitlements', adminController.getEntitlements);
 
-// Relatorios - Exportacao CSV
-router.get('/reports/uptime/export', reportsController.exportUptimeCSV);
-router.get('/reports/activity/export', reportsController.exportActivityCSV);
-router.get('/reports/usage/export', reportsController.exportUsageCSV);
-router.get('/reports/idle/export', reportsController.exportIdleCSV);
-router.get('/reports/users/export', reportsController.exportUsersCSV);
-router.get('/reports/inventory/export', reportsController.exportInventoryCSV);
-router.get('/reports/growth/export', reportsController.exportGrowthCSV);
+// Relatorios - Visualizacao (requer feature reports)
+router.get('/reports/uptime', requireFeature('reports'), reportsController.getUptimeReport);
+router.get('/reports/activity', requireFeature('reports'), reportsController.getActivityReport);
+router.get('/reports/usage', requireFeature('reports'), reportsController.getUsageReport);
+router.get('/reports/idle', requireFeature('reports'), reportsController.getIdleReport);
+router.get('/reports/users', requireFeature('reports'), reportsController.getUsersReport);
+router.get('/reports/inventory', requireFeature('reports'), reportsController.getInventoryReport);
+router.get('/reports/growth', requireFeature('reports'), reportsController.getGrowthReport);
+
+// Relatorios - Exportacao CSV (requer feature reports)
+router.get('/reports/uptime/export', requireFeature('reports'), reportsController.exportUptimeCSV);
+router.get('/reports/activity/export', requireFeature('reports'), reportsController.exportActivityCSV);
+router.get('/reports/usage/export', requireFeature('reports'), reportsController.exportUsageCSV);
+router.get('/reports/idle/export', requireFeature('reports'), reportsController.exportIdleCSV);
+router.get('/reports/users/export', requireFeature('reports'), reportsController.exportUsersCSV);
+router.get('/reports/inventory/export', requireFeature('reports'), reportsController.exportInventoryCSV);
+router.get('/reports/growth/export', requireFeature('reports'), reportsController.exportGrowthCSV);
 
 // =============================================================================
 // LOGS DE AUDITORIA (requer feature audit_logs)
@@ -106,29 +79,29 @@ router.get('/audit-logs/entity-types', requireFeature('audit_logs'), adminContro
 // Plan Features
 router.get('/features', enterpriseController.getPlanFeatures);
 
-// SSO (Single Sign-On)
-router.get('/sso', enterpriseController.getSSOConfig);
-router.post('/sso', enterpriseController.createSSOConfig);
-router.put('/sso', enterpriseController.updateSSOConfig);
-router.delete('/sso', enterpriseController.deleteSSOConfig);
+// SSO (Single Sign-On) - requer feature sso_enabled
+router.get('/sso', requireFeature('sso_enabled'), enterpriseController.getSSOConfig);
+router.post('/sso', requireFeature('sso_enabled'), enterpriseController.createSSOConfig);
+router.put('/sso', requireFeature('sso_enabled'), enterpriseController.updateSSOConfig);
+router.delete('/sso', requireFeature('sso_enabled'), enterpriseController.deleteSSOConfig);
 
-// Webhooks
-router.get('/webhooks', enterpriseController.getWebhooks);
-router.get('/webhooks/:id', enterpriseController.getWebhookById);
-router.post('/webhooks', enterpriseController.createWebhook);
-router.put('/webhooks/:id', enterpriseController.updateWebhook);
-router.delete('/webhooks/:id', enterpriseController.deleteWebhook);
-router.get('/webhooks/:id/logs', enterpriseController.getWebhookLogs);
-router.post('/webhooks/:id/test', enterpriseController.testWebhook);
+// Webhooks - requer feature webhooks
+router.get('/webhooks', requireFeature('webhooks'), enterpriseController.getWebhooks);
+router.get('/webhooks/:id', requireFeature('webhooks'), enterpriseController.getWebhookById);
+router.post('/webhooks', requireFeature('webhooks'), enterpriseController.createWebhook);
+router.put('/webhooks/:id', requireFeature('webhooks'), enterpriseController.updateWebhook);
+router.delete('/webhooks/:id', requireFeature('webhooks'), enterpriseController.deleteWebhook);
+router.get('/webhooks/:id/logs', requireFeature('webhooks'), enterpriseController.getWebhookLogs);
+router.post('/webhooks/:id/test', requireFeature('webhooks'), enterpriseController.testWebhook);
 
-// White-Label (Branding)
-router.get('/branding', enterpriseController.getBranding);
-router.put('/branding', enterpriseController.updateBranding);
-router.delete('/branding', enterpriseController.deleteBranding);
+// White-Label (Branding) - requer feature white_label
+router.get('/branding', requireFeature('white_label'), enterpriseController.getBranding);
+router.put('/branding', requireFeature('white_label'), enterpriseController.updateBranding);
+router.delete('/branding', requireFeature('white_label'), enterpriseController.deleteBranding);
 
-// API Tokens
-router.get('/api-tokens', enterpriseController.getApiTokens);
-router.post('/api-tokens', enterpriseController.createApiToken);
-router.delete('/api-tokens/:id', enterpriseController.revokeApiToken);
+// API Tokens - requer feature api_access
+router.get('/api-tokens', requireFeature('api_access'), enterpriseController.getApiTokens);
+router.post('/api-tokens', requireFeature('api_access'), enterpriseController.createApiToken);
+router.delete('/api-tokens/:id', requireFeature('api_access'), enterpriseController.revokeApiToken);
 
 export default router;
