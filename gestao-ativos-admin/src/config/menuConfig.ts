@@ -171,7 +171,7 @@ export const securityMenuItems: NavItem[] = [
     name: 'Auditoria & Logs',
     href: '/audit-logs',
     icon: FileText,
-    requiredFeature: 'auditLogExport',
+    requiredFeature: 'auditLogs',
     minPlan: 'Profissional',
   },
 ];

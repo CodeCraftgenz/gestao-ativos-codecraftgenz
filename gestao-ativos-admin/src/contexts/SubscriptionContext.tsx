@@ -136,7 +136,93 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [upgradeInfo, setUpgradeInfo] = useState<UpgradeInfo | null>(null);
 
-  // Extrai features do plano (suporta JSON features ou campos individuais)
+  // Retorna features padrao baseado no slug do plano
+  const getFeaturesBySlug = useCallback((slug: string, planData: Plan): PlanFeatures => {
+    const base = {
+      maxDevices: planData.max_devices ?? 5,
+      maxUsers: planData.max_users ?? 1,
+      maxFiliais: planData.max_filiais ?? 1,
+      dataRetentionDays: planData.data_retention_days ?? 30,
+    };
+
+    switch (slug) {
+      case 'empresarial':
+        return {
+          ...base,
+          alerts: true,
+          reports: true,
+          geoip: true,
+          remoteAccess: true,
+          apiAccess: true,
+          apiAccessLevel: 'read_write',
+          auditLogs: true,
+          auditLogExport: true,
+          shadowItAlert: true,
+          webhooks: true,
+          ssoEnabled: true,
+          whiteLabel: true,
+          msiInstaller: true,
+          prioritySupport: true,
+          dedicatedSupport: true,
+          slaGuarantee: true,
+          customRetention: true,
+        };
+      case 'profissional':
+        return {
+          ...base,
+          alerts: true,
+          reports: true,
+          geoip: true,
+          remoteAccess: true,
+          apiAccess: true,
+          apiAccessLevel: 'read',
+          auditLogs: true,
+          auditLogExport: true,
+          shadowItAlert: true,
+          webhooks: false,
+          ssoEnabled: false,
+          whiteLabel: false,
+          msiInstaller: false,
+          prioritySupport: true,
+        };
+      case 'basico':
+        return {
+          ...base,
+          alerts: true,
+          reports: true,
+          geoip: true,
+          remoteAccess: true,
+          apiAccess: false,
+          auditLogs: false,
+          auditLogExport: false,
+          shadowItAlert: false,
+          webhooks: false,
+          ssoEnabled: false,
+          whiteLabel: false,
+          msiInstaller: false,
+          prioritySupport: false,
+        };
+      default: // gratuito
+        return {
+          ...base,
+          alerts: false,
+          reports: false,
+          geoip: false,
+          remoteAccess: false,
+          apiAccess: false,
+          auditLogs: false,
+          auditLogExport: false,
+          shadowItAlert: false,
+          webhooks: false,
+          ssoEnabled: false,
+          whiteLabel: false,
+          msiInstaller: false,
+          prioritySupport: false,
+        };
+    }
+  }, []);
+
+  // Extrai features do plano (suporta JSON features ou fallback por slug)
   const extractFeatures = useCallback((planData: Plan): PlanFeatures => {
     // Se o plano tem campo features JSON (nova estrutura)
     if (planData.features && typeof planData.features === 'object') {
@@ -170,31 +256,32 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // Fallback para estrutura antiga (campos individuais)
+    // Fallback: deriva features pelo slug do plano
+    if (planData.slug) {
+      return getFeaturesBySlug(planData.slug, planData);
+    }
+
+    // Ultimo fallback: campos individuais antigos
     return {
-      // Features basicas
       alerts: planData.feature_alerts ?? false,
       reports: planData.feature_reports ?? false,
       geoip: planData.feature_geoip ?? false,
       remoteAccess: true,
-      // Features avancadas
       auditLogs: false,
       auditLogExport: false,
       shadowItAlert: false,
       apiAccess: planData.feature_api_access ?? false,
-      // Features enterprise
       webhooks: false,
       ssoEnabled: false,
       whiteLabel: false,
       msiInstaller: false,
       prioritySupport: false,
-      // Limites
       maxDevices: planData.max_devices ?? 5,
       maxUsers: planData.max_users ?? 1,
       maxFiliais: planData.max_filiais ?? 1,
       dataRetentionDays: planData.data_retention_days ?? 30,
     };
-  }, []);
+  }, [getFeaturesBySlug]);
 
   // Carrega subscription do usuario
   const refreshSubscription = useCallback(async () => {
