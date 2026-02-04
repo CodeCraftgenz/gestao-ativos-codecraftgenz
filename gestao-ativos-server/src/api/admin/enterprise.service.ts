@@ -613,10 +613,10 @@ export async function validateApiToken(
 
 export async function getPlanFeatures(userId: number): Promise<PlanFeatures | null> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT p.features, p.data_retention_days, p.max_devices
+    `SELECT p.features, p.slug, p.data_retention_days, p.max_devices
      FROM subscriptions s
      JOIN plans p ON s.plan_id = p.id
-     WHERE s.user_id = ? AND s.status = 'active'
+     WHERE s.user_id = ? AND s.status IN ('active', 'trial')
      ORDER BY s.started_at DESC
      LIMIT 1`,
     [userId]
@@ -651,27 +651,8 @@ export async function getPlanFeatures(userId: number): Promise<PlanFeatures | nu
     return typeof row.features === 'string' ? JSON.parse(row.features) : row.features;
   }
 
-  // Fallback para planos sem JSON features
-  return {
-    max_devices: row.max_devices,
-    data_retention_days: row.data_retention_days,
-    // Features basicas
-    reports: true,
-    alerts: true,
-    geoip: true,
-    remote_access: true,
-    // Features avancadas
-    api_access: false,
-    audit_logs: false,
-    audit_log_export: false,
-    shadow_it_alert: false,
-    // Features enterprise
-    webhooks: false,
-    sso_enabled: false,
-    white_label: false,
-    msi_installer: false,
-    priority_support: false,
-  };
+  // Fallback baseado no slug do plano quando features JSON nao esta populado
+  return getDefaultFeaturesBySlug(row.slug, row.max_devices, row.data_retention_days);
 }
 
 export async function hasFeature(userId: number, feature: keyof PlanFeatures): Promise<boolean> {
@@ -685,6 +666,92 @@ export async function hasFeature(userId: number, feature: keyof PlanFeatures): P
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Retorna features padrao baseado no slug do plano
+ * Usado como fallback quando a coluna features JSON nao esta populada
+ */
+export function getDefaultFeaturesBySlug(slug: string, maxDevices: number, retentionDays: number): PlanFeatures {
+  switch (slug) {
+    case 'empresarial':
+      return {
+        max_devices: maxDevices || 999999,
+        data_retention_days: retentionDays || 1825,
+        reports: true,
+        alerts: true,
+        geoip: true,
+        remote_access: true,
+        api_access: true,
+        api_access_level: 'read_write',
+        audit_logs: true,
+        audit_log_export: true,
+        shadow_it_alert: true,
+        webhooks: true,
+        sso_enabled: true,
+        white_label: true,
+        msi_installer: true,
+        priority_support: true,
+        dedicated_support: true,
+        sla_guarantee: true,
+        custom_retention: true,
+      };
+    case 'profissional':
+      return {
+        max_devices: maxDevices || 100,
+        data_retention_days: retentionDays || 90,
+        reports: true,
+        alerts: true,
+        geoip: true,
+        remote_access: true,
+        api_access: true,
+        api_access_level: 'read',
+        audit_logs: true,
+        audit_log_export: true,
+        shadow_it_alert: true,
+        webhooks: false,
+        sso_enabled: false,
+        white_label: false,
+        msi_installer: false,
+        priority_support: true,
+      };
+    case 'basico':
+      return {
+        max_devices: maxDevices || 20,
+        data_retention_days: retentionDays || 30,
+        reports: true,
+        alerts: true,
+        geoip: true,
+        remote_access: true,
+        api_access: false,
+        audit_logs: false,
+        audit_log_export: false,
+        shadow_it_alert: false,
+        webhooks: false,
+        sso_enabled: false,
+        white_label: false,
+        msi_installer: false,
+        priority_support: false,
+      };
+    default: // gratuito
+      return {
+        max_devices: maxDevices || 5,
+        data_retention_days: retentionDays || 7,
+        reports: false,
+        alerts: false,
+        geoip: false,
+        remote_access: false,
+        api_access: false,
+        audit_logs: false,
+        audit_log_export: false,
+        shadow_it_alert: false,
+        webhooks: false,
+        sso_enabled: false,
+        white_label: false,
+        msi_installer: false,
+        priority_support: false,
+      };
+  }
+}
 
 function encryptSecret(secret: string): string {
   const key = process.env.ENCRYPTION_KEY || 'default-encryption-key-32bytes!!';

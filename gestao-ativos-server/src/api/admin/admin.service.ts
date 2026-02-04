@@ -10,6 +10,7 @@ import type {
   PlanUsage,
 } from '../../types/index.js';
 import { AppError } from '../../middleware/error.middleware.js';
+import { getDefaultFeaturesBySlug } from './enterprise.service.js';
 
 export async function getStats(): Promise<DashboardStats> {
   const result = await queryOne<{
@@ -544,13 +545,16 @@ export async function getPlans(): Promise<Plan[]> {
     ORDER BY price_monthly_cents ASC
   `);
 
-  // Parse features JSON para cada plano
-  return plans.map(plan => ({
-    ...plan,
-    features: plan.features
+  // Parse features JSON para cada plano (com fallback por slug)
+  return plans.map(plan => {
+    let features = plan.features
       ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
-      : null
-  }));
+      : null;
+    if (!features) {
+      features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+    }
+    return { ...plan, features };
+  });
 }
 
 /**
@@ -572,12 +576,14 @@ export async function getPlanById(id: number): Promise<Plan> {
     throw new AppError(404, 'Plano nao encontrado');
   }
 
-  return {
-    ...plan,
-    features: plan.features
-      ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
-      : null
-  };
+  let features = plan.features
+    ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
+    : null;
+  if (!features) {
+    features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+  }
+
+  return { ...plan, features };
 }
 
 /**
@@ -599,12 +605,14 @@ export async function getPlanBySlug(slug: string): Promise<Plan> {
     throw new AppError(404, 'Plano nao encontrado');
   }
 
-  return {
-    ...plan,
-    features: plan.features
-      ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
-      : null
-  };
+  let features = plan.features
+    ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features)
+    : null;
+  if (!features) {
+    features = getDefaultFeaturesBySlug(plan.slug, plan.max_devices, plan.data_retention_days);
+  }
+
+  return { ...plan, features };
 }
 
 /**
@@ -663,6 +671,15 @@ export async function getUserSubscription(userId: number): Promise<Subscription 
     } catch {
       features = null;
     }
+  }
+
+  // Fallback: se features JSON nao esta populado, gera baseado no slug do plano
+  if (!features) {
+    features = getDefaultFeaturesBySlug(
+      subscription.plan_slug,
+      subscription.plan_max_devices,
+      subscription.plan_data_retention_days
+    );
   }
 
   return {
